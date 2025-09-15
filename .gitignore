@@ -5,3 +5,4 @@ __pycache__/
 gfpgan/
 scripts/gfpgan/
 *.pyc
+cloned_voices/

@@ -12,11 +12,69 @@ from gtts import gTTS
 from pptx import Presentation
 from pdf2image import convert_from_path
 from src.utils.math_formula_processor import MathFormulaProcessor, process_math_text
+from src.utils.xtts_clone import create_cloned_voice, list_supported_languages
 
 # Thiết lập logging
 logger = logging.getLogger(__name__)
 
 
+
+def _get_cloned_voice_options(root_dir='./cloned_voices'):
+    """Scan cloned voices and return display names from config.json.
+
+    Fallback to mp3 filename if config is missing.
+    Layout: ./cloned_voices/<voice_id>/{config.json, reference.mp3, reference_16k_mono.wav}
+    """
+    options = []
+    try:
+        if not os.path.isdir(root_dir):
+            return options
+        for voice_id in sorted(os.listdir(root_dir)):
+            dir_path = os.path.join(root_dir, voice_id)
+            if not os.path.isdir(dir_path):
+                continue
+            cfg_path = os.path.join(dir_path, 'config.json')
+            if os.path.isfile(cfg_path):
+                try:
+                    import json
+                    with open(cfg_path, 'r', encoding='utf-8') as f:
+                        cfg = json.load(f)
+                    name = cfg.get('display_name')
+                    if name:
+                        options.append(name)
+                        continue
+                except Exception:
+                    pass
+            # fallback: use first mp3 filename
+            for fname in os.listdir(dir_path):
+                if fname.lower().endswith('.mp3'):
+                    options.append(os.path.splitext(fname)[0])
+                    break
+    except Exception:
+        pass
+    return options
+
+def _on_voice_mode_change(mode):
+    """Return visibility updates for the two blocks based on selected mode."""
+    use_builtin = mode == 'Ngôn ngữ có sẵn'
+    use_clone = mode == 'Giọng nhân bản'
+    return gr.update(visible=use_builtin), gr.update(visible=use_clone)
+
+def _handle_create_clone(file):
+    """Handle creating a cloned voice from uploaded mp3.
+
+    Returns status text and refreshed dropdown choices.
+    """
+    if file is None:
+        return "❌ Vui lòng tải lên file mp3 giọng mẫu", gr.update()
+    ok, name, err = create_cloned_voice(file.name, voices_root='./cloned_voices')
+    if not ok:
+        return f"❌ Tạo giọng clone thất bại: {err}", gr.update()
+    # Refresh options after successful creation
+    options = _get_cloned_voice_options()
+    # Try to select the newly created display name if present
+    new_value = name if name in options else None
+    return f"✅ Đã tạo giọng clone: {name}", gr.update(choices=options, value=new_value)
 
 def convert_pptx_to_images(pptx_path, dpi=220):
     # Kiểm tra LibreOffice
@@ -245,13 +303,49 @@ def create_lecture_input_interface():
                 elem_id="lecture_pptx_file"
             )
             
-            # Language selection
-            lecture_audio_language = gr.Dropdown(
-                choices=["vi", "en", "zh", "ja", "ko", "fr", "de", "es", "it", "pt"],
-                value="vi",
-                label="Ngôn ngữ giảng bài",
-                elem_id="lecture_audio_language"
+            # Voice mode switcher
+            gr.Markdown("### 🔊 Chọn chế độ giọng đọc")
+            lecture_voice_mode = gr.Radio(
+                choices=["Ngôn ngữ có sẵn", "Giọng nhân bản"],
+                label="Chế độ giọng đọc",
+                value=None,
+                elem_id="lecture_voice_mode"
             )
+
+            # Built-in language block (hidden by default until user selects)
+            builtin_block = gr.Group(visible=False)
+            with builtin_block:
+                lecture_audio_language = gr.Dropdown(
+                    choices=["vi", "en", "zh", "ja", "ko", "fr", "de", "es", "it", "pt"],
+                    value=None,
+                    label="Ngôn ngữ giảng bài",
+                    elem_id="lecture_audio_language"
+                )
+
+            # Cloned voice block placeholder
+            cloned_block = gr.Group(visible=False)
+            with cloned_block:
+                gr.Markdown("### 🧬 Sử dụng giọng đọc nhân bản (XTTS‑v2)")
+                clone_upload = gr.File(
+                    label="Tải lên file mp3 giọng mẫu (để tạo bản clone)",
+                    file_types=[".mp3"],
+                    elem_id="clone_reference_mp3"
+                )
+                clone_create_btn = gr.Button("Tạo bản giọng clone")
+                cloned_voice_list = gr.Dropdown(
+                    choices=_get_cloned_voice_options(),
+                    label="Chọn bản giọng clone",
+                    value=None,
+                    elem_id="cloned_voice_list"
+                )
+                # Language for XTTS‑v2 content generation (full list later)
+                cloned_voice_lang = gr.Dropdown(
+                    choices=list_supported_languages(),
+                    value=None,
+                    label="Ngôn ngữ nội dung (XTTS‑v2)",
+                    elem_id="cloned_voice_language"
+                )
+                clone_status = gr.Textbox(label="Trạng thái giọng nhân bản", interactive=False)
             
             # Preview extracted slides
             gr.Markdown("### 📝 Nội dung từ PowerPoint")
@@ -327,12 +421,30 @@ def create_lecture_input_interface():
         inputs=[lecture_pptx_file],
         outputs=[lecture_slides_preview]
     )
+    lecture_voice_mode.change(
+        fn=_on_voice_mode_change,
+        inputs=[lecture_voice_mode],
+        outputs=[builtin_block, cloned_block]
+    )
+    clone_create_btn.click(
+        fn=_handle_create_clone,
+        inputs=[clone_upload],
+        outputs=[clone_status, cloned_voice_list]
+    )
     
     # Return all components for connection with output module
     return {
         'source_image': lecture_source_image,
         'pptx_file': lecture_pptx_file,
         'audio_language': lecture_audio_language,
+        'voice_mode': lecture_voice_mode,
+        'builtin_block': builtin_block,
+        'cloned_block': cloned_block,
+        'cloned_voice_list': cloned_voice_list,
+        'cloned_voice_language': cloned_voice_lang,
+        'clone_upload': clone_upload,
+        'clone_create_btn': clone_create_btn,
+        'clone_status': clone_status,
         'slides_preview': lecture_slides_preview,
         'extract_btn': extract_lecture_slides_btn,
         'generate_btn': generate_lecture_btn,

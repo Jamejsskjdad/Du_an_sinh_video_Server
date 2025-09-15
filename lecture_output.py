@@ -1,4 +1,5 @@
 import os
+import json
 import gradio as gr
 import tempfile
 import time
@@ -9,6 +10,7 @@ from datetime import datetime
 from moviepy.editor import VideoFileClip, concatenate_videoclips, CompositeVideoClip, TextClip, ImageClip, AudioFileClip
 from PIL import Image, ImageDraw, ImageFont
 from lecture_input import convert_text_to_audio, extract_slides_from_pptx
+from src.utils.xtts_clone import XTTSInference
 
 def cleanup_cuda_memory():
     """
@@ -95,7 +97,29 @@ def create_slide_image_with_text(text, output_path, width=1280, height=720):
         print(f"Error creating slide image: {str(e)}")
         return None
 
-def generate_video_for_text(sad_talker, source_image, text, language, preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style):
+def _find_reference_wav_by_display_name(display_name: str, voices_root: str = './cloned_voices'):
+    try:
+        if not os.path.isdir(voices_root):
+            return None
+        for voice_id in os.listdir(voices_root):
+            vdir = os.path.join(voices_root, voice_id)
+            cfg_path = os.path.join(vdir, 'config.json')
+            if not os.path.isfile(cfg_path):
+                continue
+            with open(cfg_path, 'r', encoding='utf-8') as f:
+                cfg = json.load(f)
+            if cfg.get('display_name') == display_name:
+                wav_name = cfg.get('reference_wav')
+                if wav_name:
+                    wav_path = os.path.join(vdir, wav_name)
+                    return wav_path if os.path.isfile(wav_path) else None
+    except Exception:
+        return None
+    return None
+
+
+def generate_video_for_text(sad_talker, source_image, text, language, voice_mode, cloned_voice_name, cloned_lang,
+                            preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style):
     """
     Generate video for a single text using SadTalker with CUDA memory management
     """
@@ -113,7 +137,21 @@ def generate_video_for_text(sad_talker, source_image, text, language, preprocess
                 return None
             
             # Convert text to audio
-            audio_path = convert_text_to_audio(text, language)
+            audio_path = None
+            if voice_mode == 'Giọng nhân bản' and cloned_voice_name:
+                # Use XTTS with reference voice
+                ref_wav = _find_reference_wav_by_display_name(cloned_voice_name)
+                if ref_wav:
+                    try:
+                        xtts = XTTSInference()
+                        lang_code = cloned_lang if cloned_lang else language
+                        audio_path = xtts.synthesize(text, lang_code, ref_wav)
+                    except Exception as e:
+                        print(f"XTTS synthesis failed, fallback to gTTS: {e}")
+                if audio_path is None:
+                    audio_path = convert_text_to_audio(text, language)
+            else:
+                audio_path = convert_text_to_audio(text, language)
             if not audio_path:
                 print("Failed to convert text to audio")
                 return None
@@ -170,7 +208,8 @@ def generate_video_for_text(sad_talker, source_image, text, language, preprocess
     
     return None
 
-def create_lecture_video(sad_talker, slides_data, source_image, language, preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style):
+def create_lecture_video(sad_talker, slides_data, source_image, language, voice_mode, cloned_voice_name, cloned_lang,
+                         preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style):
     """
     Create a lecture video combining slides and teacher video
     """
@@ -238,7 +277,20 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, prepro
 
             
             # Generate audio for slide text
-            audio_path = convert_text_to_audio(slide_data['text'], language)
+            if voice_mode == 'Giọng nhân bản' and cloned_voice_name:
+                ref_wav = _find_reference_wav_by_display_name(cloned_voice_name)
+                if ref_wav:
+                    try:
+                        xtts = XTTSInference()
+                        lang_code = cloned_lang if cloned_lang else language
+                        audio_path = xtts.synthesize(slide_data['text'], lang_code, ref_wav)
+                    except Exception as e:
+                        print(f"XTTS synthesis failed for slide {i+1}, fallback to gTTS: {e}")
+                        audio_path = convert_text_to_audio(slide_data['text'], language)
+                else:
+                    audio_path = convert_text_to_audio(slide_data['text'], language)
+            else:
+                audio_path = convert_text_to_audio(slide_data['text'], language)
             if not audio_path:
                 print(f"❌ Failed to generate audio for slide {i+1}")
                 continue
@@ -255,7 +307,7 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, prepro
             # Generate teacher video with memory management
             print(f"🎬 Generating teacher video for slide {i+1}...")
             teacher_video_path = generate_video_for_text(
-                sad_talker, safe_image_path, slide_data['text'], language, 
+                sad_talker, safe_image_path, slide_data['text'], language, voice_mode, cloned_voice_name, cloned_lang,
                 preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style
             )
             
@@ -481,7 +533,7 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, prepro
         print(f"Error in create_lecture_video: {str(e)}")
         return None, f"❌ Lỗi tạo video bài giảng: {str(e)}"
 
-def generate_lecture_video_handler(sad_talker, pptx, img, lang, preprocess, still, enh, batch, size, pose):
+def generate_lecture_video_handler(sad_talker, pptx, img, lang, voice_mode, cloned_voice, cloned_lang, preprocess, still, enh, batch, size, pose):
     """Handler function for generating lecture video"""
     if not pptx or not img:
         return None, "❌ Vui lòng chọn file PowerPoint và ảnh giáo viên!"
@@ -491,5 +543,5 @@ def generate_lecture_video_handler(sad_talker, pptx, img, lang, preprocess, stil
         return None, "❌ Không thể trích xuất nội dung từ PowerPoint!"
     
     return create_lecture_video(
-        sad_talker, slides_data, img, lang, preprocess, still, enh, batch, size, pose
+        sad_talker, slides_data, img, lang, voice_mode, cloned_voice, cloned_lang, preprocess, still, enh, batch, size, pose
     )
