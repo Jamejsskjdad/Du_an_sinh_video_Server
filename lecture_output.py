@@ -292,8 +292,17 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
             else:
                 audio_path = convert_text_to_audio(slide_data['text'], language)
             if not audio_path:
-                print(f"❌ Failed to generate audio for slide {i+1}")
-                continue
+                print(f"❌ Failed to generate audio for slide {i+1} - tạo âm thanh im lặng thay thế")
+                # Tạo file wav im lặng tối thiểu 3 giây để không bỏ qua slide
+                try:
+                    silent_seconds = 3
+                    silent_wav = os.path.join(output_dir, f"silent_{i+1:02d}.wav")
+                    from pydub import AudioSegment
+                    AudioSegment.silent(duration=silent_seconds*1000).export(silent_wav, format="wav")
+                    audio_path = silent_wav
+                except Exception as e:
+                    print(f"❌ Không tạo được âm thanh im lặng: {e}")
+                    continue
             
             # Get audio duration
             audio_duration = get_audio_duration(audio_path)
@@ -324,9 +333,6 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
             # Add small delay to ensure file is fully written
             time.sleep(1)
             
-            # Create slide video clip (static image for audio duration)
-            slide_clip = ImageClip(slide_image_path, duration=audio_duration)
-            
             # Load teacher video clip with error handling
             try:
                 teacher_clip = VideoFileClip(teacher_video_path)
@@ -336,6 +342,11 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
                 if os.path.exists(audio_path):
                     os.remove(audio_path)
                 continue
+            
+            # Create slide video clip (static image) and align its duration to teacher clip
+            # để tránh trường hợp ảnh slide kết thúc sớm hơn video giáo viên
+            composite_duration = max(audio_duration, getattr(teacher_clip, 'duration', audio_duration))
+            slide_clip = ImageClip(slide_image_path, duration=composite_duration)
             
             # Resize teacher video to fit in bottom-right corner (picture-in-picture)
             # Calculate size: 25% of slide width, maintain aspect ratio
@@ -353,6 +364,9 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
             
             # Composite slide and teacher video
             composite_clip = CompositeVideoClip([slide_clip, teacher_clip])
+            # Bảo đảm audio là của teacher clip
+            if getattr(teacher_clip, 'audio', None) is not None:
+                composite_clip = composite_clip.set_audio(teacher_clip.audio)
             
             # Add to clips list
             slide_clips.append(composite_clip)

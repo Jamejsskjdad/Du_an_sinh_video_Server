@@ -443,10 +443,11 @@ class MathFormulaProcessor:
                 slide_num = i + 1
                 text_chunks = []
                 
-                # Trích xuất văn bản thông thường
+                # Trích xuất văn bản thông thường (bao phủ textbox/group/table)
                 for shape in slide.shapes:
-                    if hasattr(shape, "text") and shape.text:
-                        text_chunks.append(shape.text.strip())
+                    extracted_text = self._extract_text_from_shape(shape)
+                    if extracted_text:
+                        text_chunks.append(extracted_text)
                 
                 # Kết hợp văn bản thông thường và toán học
                 slide_text = " ".join(filter(None, text_chunks))
@@ -484,6 +485,63 @@ class MathFormulaProcessor:
                 'slides_with_math': 0,
                 'error': str(e)
             }
+
+    def _extract_text_from_shape(self, shape) -> str:
+        """
+        Trích xuất text từ shape. Hỗ trợ: textbox, bảng, group và placeholder.
+        Đệ quy qua group. Ghép paragraphs/runs để không mất ký tự.
+        """
+        try:
+            # Text frame (textbox, placeholder)
+            if getattr(shape, 'has_text_frame', False):
+                parts = []
+                tf = shape.text_frame
+                try:
+                    for p in tf.paragraphs:
+                        if getattr(p, 'runs', None):
+                            run_text = ''.join([r.text for r in p.runs if getattr(r, 'text', None)])
+                            parts.append(run_text if run_text else p.text)
+                        else:
+                            parts.append(p.text)
+                except Exception:
+                    if getattr(shape, 'text', None):
+                        parts.append(shape.text)
+                return self._clean_text(' '.join([t for t in parts if t]))
+
+            # Table
+            if getattr(shape, 'has_table', False):
+                texts = []
+                for row in shape.table.rows:
+                    for cell in row.cells:
+                        if getattr(cell, 'text_frame', None):
+                            cell_parts = []
+                            for p in cell.text_frame.paragraphs:
+                                if getattr(p, 'runs', None):
+                                    run_text = ''.join([r.text for r in p.runs if getattr(r, 'text', None)])
+                                    cell_parts.append(run_text if run_text else p.text)
+                                else:
+                                    cell_parts.append(p.text)
+                            if cell_parts:
+                                texts.append(' '.join(cell_parts))
+                        elif getattr(cell, 'text', None):
+                            texts.append(cell.text)
+                return self._clean_text(' '.join(texts))
+
+            # Group: traverse children
+            if getattr(shape, 'shapes', None) is not None and getattr(shape, 'shape_type', None) is not None and 'GROUP' in str(shape.shape_type):
+                sub_texts = []
+                for sub in shape.shapes:
+                    t = self._extract_text_from_shape(sub)
+                    if t:
+                        sub_texts.append(t)
+                return self._clean_text(' '.join(sub_texts))
+
+            # Fallback
+            if getattr(shape, 'text', None):
+                return self._clean_text(shape.text)
+        except Exception as e:
+            logger.debug(f"_extract_text_from_shape error: {e}")
+        return ''
 
 # Hàm tiện ích để sử dụng nhanh
 def process_math_text(text: str) -> str:

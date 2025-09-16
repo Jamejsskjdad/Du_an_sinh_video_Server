@@ -9,6 +9,11 @@ import xml.etree.ElementTree as ET
 from shutil import which
 
 from gtts import gTTS
+from PIL import Image
+try:
+    import pytesseract
+except Exception:
+    pytesseract = None
 from pptx import Presentation
 from pdf2image import convert_from_path
 from src.utils.math_formula_processor import MathFormulaProcessor, process_math_text
@@ -250,6 +255,27 @@ def extract_slides_from_pptx(pptx_file):
                 'image_path': image_paths[slide_info['slide_number'] - 1] if slide_info['slide_number'] - 1 < len(image_paths) else None,
                 'has_math_objects': slide_info['has_math_objects']
             })
+    
+    # OCR fallback: nếu text rỗng, thử nhận diện từ ảnh slide
+    try:
+        if pytesseract is not None:
+            for i, s in enumerate(slides_data):
+                if not s['text'] or s['text'].strip() == "":
+                    img_path = s.get('image_path') or (image_paths[i] if i < len(image_paths) else None)
+                    if img_path and os.path.exists(img_path):
+                        try:
+                            img = Image.open(img_path)
+                            # ưu tiên tiếng Việt nếu có, fallback eng
+                            ocr_text = pytesseract.image_to_string(img, lang='vie+eng')
+                        except Exception:
+                            ocr_text = ''
+                        ocr_text = (ocr_text or '').strip()
+                        if ocr_text:
+                            s['text'] = process_math_text(ocr_text)
+        else:
+            logger.warning("pytesseract chưa được cài, bỏ qua OCR fallback.")
+    except Exception as e:
+        logger.warning(f"Lỗi OCR fallback: {e}")
     
     return slides_data
 
