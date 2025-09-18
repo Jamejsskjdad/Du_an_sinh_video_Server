@@ -7,6 +7,10 @@ import logging
 # Thiết lập logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+try:
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+except Exception:
+    MSO_SHAPE_TYPE = None
 
 class MathFormulaProcessor:
     """
@@ -442,16 +446,16 @@ class MathFormulaProcessor:
             for i, slide in enumerate(prs.slides):
                 slide_num = i + 1
                 text_chunks = []
-                
-                # Trích xuất văn bản thông thường (bao phủ textbox/group/table)
+
+                # Trích xuất văn bản từ từng shape, đặc biệt xử lý bảng
                 for shape in slide.shapes:
                     extracted_text = self._extract_text_from_shape(shape)
                     if extracted_text:
                         text_chunks.append(extracted_text)
-                
+
                 # Kết hợp văn bản thông thường và toán học
-                slide_text = " ".join(filter(None, text_chunks))
-                
+                slide_text = "\n".join(filter(None, text_chunks))
+
                 # Xử lý văn bản thông thường
                 processed_text = self.process_special_characters(slide_text)
                 
@@ -486,6 +490,89 @@ class MathFormulaProcessor:
                 'error': str(e)
             }
 
+    # ---------- Layout helpers (vị trí/khối) ----------
+    def _is_numeric_badge(self, txt: str) -> bool:
+        return bool(re.match(r"^\s*\d{1,3}[.)-]?\s*$", (txt or "").strip()))
+
+    def _median(self, vals):
+        vals = sorted(int(v) for v in vals if v is not None and v > 0)
+        if not vals:
+            return 0
+        n = len(vals)
+        return vals[n//2] if n % 2 else (vals[n//2 - 1] + vals[n//2]) // 2
+
+    def _iter_text_shapes_with_pos(self, shapes, dx=0, dy=0):
+        for shp in shapes:
+            try:
+                st = getattr(shp, 'shape_type', None)
+            except Exception:
+                st = None
+
+            if MSO_SHAPE_TYPE is not None and st == MSO_SHAPE_TYPE.GROUP:
+                ox, oy = int(getattr(shp, 'left', 0)), int(getattr(shp, 'top', 0))
+                yield from self._iter_text_shapes_with_pos(shp.shapes, dx + ox, dy + oy)
+                continue
+
+            # text content
+            txt = ''
+            if getattr(shp, 'has_text_frame', False) and getattr(shp, 'text_frame', None) is not None:
+                try:
+                    txt = shp.text_frame.text or ''
+                except Exception:
+                    txt = ''
+            elif getattr(shp, 'text', None):
+                txt = shp.text or ''
+            txt = (txt or '').strip()
+            if not txt:
+                continue
+
+            yield {
+                'text': txt,
+                'left': int(getattr(shp, 'left', 0)) + dx,
+                'top': int(getattr(shp, 'top', 0)) + dy,
+                'width': int(getattr(shp, 'width', 0)),
+                'height': int(getattr(shp, 'height', 0)),
+            }
+
+    def _group_columns(self, items, col_thr):
+        cols = []
+        for s in sorted(items, key=lambda a: a['left']):
+            placed = False
+            for c in cols:
+                if abs(s['left'] - c['x']) <= col_thr:
+                    c['items'].append(s)
+                    c['x'] = (c['x'] * (len(c['items']) - 1) + s['left']) // len(c['items'])
+                    placed = True
+                    break
+            if not placed:
+                cols.append({'x': s['left'], 'items': [s]})
+        return cols
+
+    def _group_rows(self, items, row_thr):
+        rows = []
+        for s in sorted(items, key=lambda a: a['top']):
+            cy = s['top'] + max(1, s.get('height', 0)) // 2
+            placed = False
+            for r in rows:
+                if abs(cy - r['cy']) <= row_thr:
+                    r['items'].append(s)
+                    r['cy'] = (r['cy'] * (len(r['items']) - 1) + cy) // len(r['items'])
+                    placed = True
+                    break
+            if not placed:
+                rows.append({'cy': cy, 'items': [s]})
+        return rows
+
+    def _compose_row_text(self, row_items):
+        row_items = sorted(row_items, key=lambda s: s['left'])
+        nums = [s for s in row_items if self._is_numeric_badge(s['text'])]
+        others = [s for s in row_items if not self._is_numeric_badge(s['text'])]
+        if nums and others:
+            badge = nums[0]['text'].strip()
+            other_text = ' '.join(s['text'].strip() for s in others if s['text'].strip())
+            return (badge + ' ' + other_text).strip() if other_text else badge
+        return ' '.join(s['text'].strip() for s in row_items if s['text'].strip())
+
     def _extract_text_from_shape(self, shape) -> str:
         """
         Trích xuất text từ shape. Hỗ trợ: textbox, bảng, group và placeholder.
@@ -508,11 +595,13 @@ class MathFormulaProcessor:
                         parts.append(shape.text)
                 return self._clean_text(' '.join([t for t in parts if t]))
 
-            # Table
+            # Table - đọc từ trái qua phải, từ trên xuống dưới
             if getattr(shape, 'has_table', False):
-                texts = []
-                for row in shape.table.rows:
-                    for cell in row.cells:
+                table_texts = []
+                for row_idx, row in enumerate(shape.table.rows):
+                    row_texts = []
+                    for col_idx, cell in enumerate(row.cells):
+                        cell_text = ""
                         if getattr(cell, 'text_frame', None):
                             cell_parts = []
                             for p in cell.text_frame.paragraphs:
@@ -521,11 +610,19 @@ class MathFormulaProcessor:
                                     cell_parts.append(run_text if run_text else p.text)
                                 else:
                                     cell_parts.append(p.text)
-                            if cell_parts:
-                                texts.append(' '.join(cell_parts))
+                            cell_text = ' '.join(cell_parts) if cell_parts else ""
                         elif getattr(cell, 'text', None):
-                            texts.append(cell.text)
-                return self._clean_text(' '.join(texts))
+                            cell_text = cell.text
+                        
+                        if cell_text.strip():
+                            row_texts.append(cell_text.strip())
+                    
+                    if row_texts:
+                        # Ghép các ô trong hàng với dấu cách
+                        table_texts.append(' '.join(row_texts))
+                
+                # Ghép các hàng với dấu xuống dòng để giữ cấu trúc
+                return '\n'.join(table_texts)
 
             # Group: traverse children
             if getattr(shape, 'shapes', None) is not None and getattr(shape, 'shape_type', None) is not None and 'GROUP' in str(shape.shape_type):
