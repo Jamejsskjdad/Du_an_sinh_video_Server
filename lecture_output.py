@@ -351,15 +351,15 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
             # Resize teacher video to fit in bottom-right corner (picture-in-picture)
             # Calculate size: 25% of slide width, maintain aspect ratio
             slide_width, slide_height = slide_clip.size
-            teacher_width = int(slide_width * 0.25)
+            teacher_width = int(slide_width * 0.10)
             teacher_height = int(teacher_width * teacher_clip.h / teacher_clip.w)
             
             # Resize teacher video with memory optimization
             teacher_clip = teacher_clip.resize((teacher_width, teacher_height))
             
-            # Position teacher video in bottom-right corner
-            teacher_x = slide_width - teacher_width - 50  # 50px margin
-            teacher_y = slide_height - teacher_height - 50  # 50px margin
+            # Đặt video người nói ở góc trên bên phải với lề 50 px
+            teacher_x = slide_width - teacher_width - 50
+            teacher_y = 50  # lề 50 px tính từ mép trên
             teacher_clip = teacher_clip.set_position((teacher_x, teacher_y))
             
             # Composite slide and teacher video
