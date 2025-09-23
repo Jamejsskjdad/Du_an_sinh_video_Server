@@ -12,11 +12,12 @@ try:
 except Exception:
     MSO_SHAPE_TYPE = None
 
+
 class MathFormulaProcessor:
     """
     Xử lý các ký tự đặc biệt và công thức toán học từ PowerPoint
     """
-    
+
     def __init__(self):
         # Bảng tra cứu ký tự đặc biệt sang tiếng Việt
         self.special_char_map = {
@@ -31,7 +32,7 @@ class MathFormulaProcessor:
             '⁸': ' mũ tám',
             '⁹': ' mũ chín',
             '⁰': ' mũ không',
-            
+
             # Chỉ số dưới
             '₁': ' chỉ số một',
             '₂': ' chỉ số hai',
@@ -43,7 +44,7 @@ class MathFormulaProcessor:
             '₈': ' chỉ số tám',
             '₉': ' chỉ số chín',
             '₀': ' chỉ số không',
-            
+
             # Ký tự Hy Lạp
             'α': ' alpha',
             'β': ' beta',
@@ -69,7 +70,7 @@ class MathFormulaProcessor:
             'χ': ' chi',
             'ψ': ' psi',
             'ω': ' omega',
-            
+
             # Chữ hoa Hy Lạp
             'Α': ' Alpha',
             'Β': ' Beta',
@@ -95,7 +96,7 @@ class MathFormulaProcessor:
             'Χ': ' Chi',
             'Ψ': ' Psi',
             'Ω': ' Omega',
-            
+
             # Ký tự toán học
             '±': ' cộng trừ',
             '∓': ' trừ cộng',
@@ -151,7 +152,7 @@ class MathFormulaProcessor:
             '″': ' giây',
             '‰': ' phần nghìn',
             '‱': ' phần vạn',
-            
+
             # Mũi tên
             '→': ' mũi tên phải',
             '←': ' mũi tên trái',
@@ -163,7 +164,7 @@ class MathFormulaProcessor:
             '⇐': ' ngược lại',
             '⇔': ' tương đương',
             '⇎': ' không tương đương',
-            
+
             # Logic
             '∀': ' với mọi',
             '∃': ' tồn tại',
@@ -175,7 +176,7 @@ class MathFormulaProcessor:
             '¬': ' không',
             '⊤': ' đúng',
             '⊥': ' sai',
-            
+
             # Tập số
             'ℕ': ' tập số tự nhiên',
             'ℤ': ' tập số nguyên',
@@ -183,7 +184,7 @@ class MathFormulaProcessor:
             'ℝ': ' tập số thực',
             'ℂ': ' tập số phức',
             'ℙ': ' tập số nguyên tố',
-            
+
             # Ký tự khác
             'ℵ': ' aleph',
             'ℶ': ' beth',
@@ -195,7 +196,7 @@ class MathFormulaProcessor:
             'ℴ': ' o',
             'ℵ': ' aleph',
         }
-        
+
         # Mẫu regex để nhận diện các công thức toán học đơn giản
         self.math_patterns = [
             # Phân số: a/b
@@ -215,32 +216,32 @@ class MathFormulaProcessor:
             # Tích: Π
             (r'Π([^=]+)=([^=]+)', r'tích của \1 từ \2'),
         ]
-    
+
     def process_special_characters(self, text: str) -> str:
         """
         Chuyển đổi các ký tự đặc biệt thành văn bản tiếng Việt
         """
         if not text:
             return text
-        
+
         processed_text = text
-        
+
         # Bước 1: Xử lý các mẫu toán học phức tạp TRƯỚC
         for pattern, replacement in self.math_patterns:
             processed_text = re.sub(pattern, replacement, processed_text)
-        
+
         # Bước 2: Xử lý từng ký tự đặc biệt
         for special_char, replacement in self.special_char_map.items():
             processed_text = processed_text.replace(special_char, replacement)
-        
+
         # Bước 3: Xử lý các ký tự Unicode khác
         processed_text = self._process_unicode_chars(processed_text)
-        
+
         # Bước 4: Làm sạch văn bản
         processed_text = self._clean_text(processed_text)
-        
+
         return processed_text
-    
+
     def debug_process(self, text: str) -> Dict[str, str]:
         """
         Debug từng bước xử lý để kiểm tra
@@ -253,41 +254,41 @@ class MathFormulaProcessor:
             'after_cleaning': text,
             'final': text
         }
-        
+
         # Bước 1: Regex
         processed_text = text
         for pattern, replacement in self.math_patterns:
             processed_text = re.sub(pattern, replacement, processed_text)
         debug_info['after_regex'] = processed_text
-        
+
         # Bước 2: Ký tự đặc biệt
         for special_char, replacement in self.special_char_map.items():
             processed_text = processed_text.replace(special_char, replacement)
         debug_info['after_special_chars'] = processed_text
-        
+
         # Bước 3: Unicode
         processed_text = self._process_unicode_chars(processed_text)
         debug_info['after_unicode'] = processed_text
-        
+
         # Bước 4: Làm sạch
         processed_text = self._clean_text(processed_text)
         debug_info['after_cleaning'] = processed_text
-        
+
         debug_info['final'] = processed_text
         return debug_info
-    
+
     def _process_unicode_chars(self, text: str) -> str:
         """
         Xử lý các ký tự Unicode khác
         """
         processed_chars = []
-        
+
         for char in text:
             if ord(char) > 127:  # Ký tự không phải ASCII
                 try:
                     # Lấy tên Unicode
                     char_name = unicodedata.name(char)
-                    
+
                     # Xử lý các trường hợp đặc biệt
                     if 'SUPERSCRIPT' in char_name:
                         # Số mũ
@@ -323,37 +324,37 @@ class MathFormulaProcessor:
                     else:
                         # Giữ nguyên ký tự nếu không xử lý được
                         processed_chars.append(char)
-                        
+
                 except ValueError:
                     # Nếu không lấy được tên Unicode, giữ nguyên
                     processed_chars.append(char)
             else:
                 processed_chars.append(char)
-        
+
         return ''.join(processed_chars)
-    
+
     def _clean_text(self, text: str) -> str:
         """
         Làm sạch văn bản sau khi xử lý
         """
         # Loại bỏ khoảng trắng thừa
         text = re.sub(r'\s+', ' ', text)
-        
+
         # Loại bỏ khoảng trắng đầu cuối
         text = text.strip()
-        
+
         # Xử lý các dấu câu - đảm bảo không có khoảng trắng trước dấu câu
         text = re.sub(r'\s+([.,;:!?])', r'\1', text)
-        
+
         # Xử lý dấu ngoặc - đảm bảo khoảng trắng phù hợp
         text = re.sub(r'\(\s+', '(', text)
         text = re.sub(r'\s+\)', ')', text)
-        
+
         # KHÔNG xử lý khoảng trắng giữa các từ đã được xử lý
         # Vì có thể làm hỏng các từ như "mũ hai", "chỉ số ba"
-        
+
         return text
-    
+
     def extract_math_objects_from_pptx(self, pptx_file_path: str) -> List[Dict]:
         """
         Trích xuất các đối tượng toán học từ PowerPoint
@@ -362,21 +363,21 @@ class MathFormulaProcessor:
             from pptx import Presentation
             from pptx.oxml import parse_xml
             from pptx.oxml.ns import qn
-            
+
             prs = Presentation(pptx_file_path)
             math_objects = []
-            
+
             for slide_num, slide in enumerate(prs.slides):
                 slide_math = []
-                
+
                 for shape in slide.shapes:
                     # Kiểm tra các đối tượng toán học
                     if hasattr(shape, 'element'):
                         element = shape.element
-                        
+
                         # Tìm các phần tử toán học
                         math_elements = element.findall('.//m:oMath', {'m': 'http://schemas.openxmlformats.org/officeDocument/2006/math'})
-                        
+
                         for math_elem in math_elements:
                             try:
                                 # Chuyển đổi XML thành văn bản
@@ -389,22 +390,22 @@ class MathFormulaProcessor:
                                     })
                             except Exception as e:
                                 logger.warning(f"Lỗi xử lý phần tử toán học: {e}")
-                
+
                 if slide_math:
                     math_objects.append({
                         'slide_number': slide_num + 1,
                         'math_objects': slide_math
                     })
-            
+
             return math_objects
-            
+
         except ImportError:
             logger.error("Không thể import python-pptx. Vui lòng cài đặt: pip install python-pptx")
             return []
         except Exception as e:
             logger.error(f"Lỗi trích xuất đối tượng toán học: {e}")
             return []
-    
+
     def _extract_mathml_text(self, math_element) -> str:
         """
         Trích xuất văn bản từ phần tử MathML
@@ -412,75 +413,157 @@ class MathFormulaProcessor:
         try:
             # Chuyển đổi XML thành chuỗi
             xml_str = ET.tostring(math_element, encoding='unicode')
-            
+
             # Xử lý các thẻ MathML cơ bản
             text_parts = []
-            
+
             # Tìm tất cả các phần tử văn bản
             for elem in math_element.iter():
                 if elem.text and elem.text.strip():
                     text_parts.append(elem.text.strip())
                 if elem.tail and elem.tail.strip():
                     text_parts.append(elem.tail.strip())
-            
+
             return ' '.join(text_parts)
-            
+
         except Exception as e:
             logger.warning(f"Lỗi trích xuất MathML: {e}")
             return ""
-    
+
     def process_powerpoint_text(self, pptx_file_path: str) -> Dict:
         """
         Xử lý toàn bộ văn bản từ PowerPoint, bao gồm cả đối tượng toán học
         """
         try:
             from pptx import Presentation
-            
+
             prs = Presentation(pptx_file_path)
-            processed_slides = []
-            
+            processed_slides: List[Dict] = []
+
             # Trích xuất đối tượng toán học
             math_objects = self.extract_math_objects_from_pptx(pptx_file_path)
             math_dict = {obj['slide_number']: obj['math_objects'] for obj in math_objects}
-            
+
             for i, slide in enumerate(prs.slides):
                 slide_num = i + 1
-                text_chunks = []
 
-                # Trích xuất văn bản từ từng shape, đặc biệt xử lý bảng
+                # Thu thập thông tin shape: loại, tọa độ và văn bản. Chia bảng và
+                # các shape khác nhưng vẫn lưu lại vị trí để sắp xếp hợp lý.
+                shapes_info: List[Tuple[str, int, int, str]] = []  # (type, top, left, text)
                 for shape in slide.shapes:
                     extracted_text = self._extract_text_from_shape(shape)
-                    if extracted_text:
-                        text_chunks.append(extracted_text)
+                    if not extracted_text:
+                        continue
+                    # loại shape: 'table' hoặc 'text'
+                    try:
+                        is_table = getattr(shape, 'has_table', False)
+                    except Exception:
+                        is_table = False
+                    shape_type = 'table' if is_table else 'text'
+                    top = 0
+                    left = 0
+                    try:
+                        top = int(getattr(shape, 'top', 0))
+                        left = int(getattr(shape, 'left', 0))
+                    except Exception:
+                        pass
+                    shapes_info.append((shape_type, top, left, extracted_text))
 
-                # Kết hợp văn bản thông thường và toán học
-                slide_text = "\n".join(filter(None, text_chunks))
+                # Phân loại lại: tách bảng và các shape khác (non-table)
+                table_infos = [info for info in shapes_info if info[0] == 'table']
+                non_table_infos = [info for info in shapes_info if info[0] != 'table']
+
+                ordered_texts: List[str] = []
+                # Xử lý non-table shapes: nhóm thành cột, xử lý tiêu đề bên trái trước
+                if non_table_infos:
+                    # Chuyển đổi thành dạng dict để tái sử dụng helpers
+                    items = []
+                    for t, top, left, text in non_table_infos:
+                        items.append({'text': text, 'left': left, 'top': top, 'height': 0})
+                    # Tính median width để ước lượng ngưỡng phân cột
+                    try:
+                        w_med = self._median([s['width'] for s in self._iter_text_shapes_with_pos(slide.shapes) if s.get('width', 0) > 0])
+                    except Exception:
+                        w_med = 0
+                    # Tính col threshold tương tự fallback
+                    col_thr = max(int((w_med or 1) * 0.4), int(prs.slide_width / 80))
+                    cols = self._group_columns(items, col_thr)
+                    cols.sort(key=lambda c: c['x'])
+                    if len(cols) > 1:
+                        # Xác định cột chứa tiêu đề/nội dung chính.
+                        # Nếu chỉ có 2 cột, ưu tiên chọn cột bên trái làm tiêu đề trừ khi cột đó chỉ chứa nhãn số (1–3 ký tự),
+                        # khi đó chọn cột còn lại làm tiêu đề. Nếu có nhiều hơn 2 cột, chọn cột có số phần tử ít nhất.
+                        header_col_idx = 0
+                        if len(cols) == 2:
+                            # Kiểm tra xem tất cả phần tử ở cột 0 có phải là nhãn số hay không
+                            all_numeric_in_col0 = all(
+                                self._is_numeric_badge(item['text']) for item in cols[0]['items']
+                            )
+                            if all_numeric_in_col0:
+                                header_col_idx = 1
+                        elif len(cols) > 2:
+                            # Tìm cột có số phần tử ít nhất
+                            min_count = min(len(c['items']) for c in cols)
+                            candidate_cols = [idx for idx, c in enumerate(cols) if len(c['items']) == min_count]
+                            header_col_idx = candidate_cols[0] if candidate_cols else 0
+                        # Lấy các mục tiêu đề và danh sách
+                        left_col_items = cols[header_col_idx]['items']
+                        right_items: List[Dict] = []
+                        for idx, col in enumerate(cols):
+                            if idx != header_col_idx:
+                                right_items += col['items']
+                        # Sắp xếp theo top cho tiêu đề và danh sách
+                        left_texts = [s['text'] for s in sorted(left_col_items, key=lambda s: s['top'])]
+                        right_sorted = sorted(right_items, key=lambda s: s['top'])
+                        # Nếu danh sách chỉ bao gồm các nhãn số và số nhãn bằng số tiêu đề, ghép cặp chúng
+                        numeric_badges = [item for item in right_sorted if self._is_numeric_badge(item['text'])]
+                        if numeric_badges and len(numeric_badges) == len(right_sorted) == len(left_texts):
+                            ordered_texts = []
+                            for badge_item, left_txt in zip(numeric_badges, left_texts):
+                                ordered_texts.append(f"{badge_item['text']} {left_txt}")
+                        else:
+                            # Ghép nhãn số với mô tả liền sau nó
+                            right_lines: List[str] = []
+                            for item in right_sorted:
+                                txt = item['text']
+                                if self._is_numeric_badge(txt) and right_lines:
+                                    prev = right_lines.pop()
+                                    right_lines.append(f"{txt} {prev}")
+                                else:
+                                    right_lines.append(txt)
+                            ordered_texts = left_texts + right_lines
+                    else:
+                        # Chỉ một cột, sắp xếp theo top
+                        ordered_texts = [s['text'] for s in sorted(cols[0]['items'], key=lambda s: s['top'])]
+                # Thêm bảng (nếu có) vào cuối danh sách
+                for (_, _, _, table_text) in sorted(table_infos, key=lambda x: (x[1], x[2])):
+                    ordered_texts.append(table_text)
+                slide_text = "\n".join(filter(None, ordered_texts))
 
                 # Xử lý văn bản thông thường
                 processed_text = self.process_special_characters(slide_text)
-                
+
                 # Thêm đối tượng toán học nếu có
                 if slide_num in math_dict:
-                    math_texts = []
+                    math_texts: List[str] = []
                     for math_obj in math_dict[slide_num]:
                         math_texts.append(math_obj['processed_content'])
-                    
                     if math_texts:
                         processed_text += " " + " ".join(math_texts)
-                
+
                 processed_slides.append({
                     'slide_number': slide_num,
                     'original_text': slide_text,
                     'processed_text': processed_text,
                     'has_math_objects': slide_num in math_dict
                 })
-            
+
             return {
                 'slides': processed_slides,
                 'total_slides': len(processed_slides),
                 'slides_with_math': len([s for s in processed_slides if s['has_math_objects']])
             }
-            
+
         except Exception as e:
             logger.error(f"Lỗi xử lý PowerPoint: {e}")
             return {
@@ -499,7 +582,7 @@ class MathFormulaProcessor:
         if not vals:
             return 0
         n = len(vals)
-        return vals[n//2] if n % 2 else (vals[n//2 - 1] + vals[n//2]) // 2
+        return vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) // 2
 
     def _iter_text_shapes_with_pos(self, shapes, dx=0, dy=0):
         for shp in shapes:
@@ -581,7 +664,7 @@ class MathFormulaProcessor:
         try:
             # Text frame (textbox, placeholder)
             if getattr(shape, 'has_text_frame', False):
-                parts = []
+                parts: List[str] = []
                 tf = shape.text_frame
                 try:
                     for p in tf.paragraphs:
@@ -597,13 +680,13 @@ class MathFormulaProcessor:
 
             # Table - đọc từ trái qua phải, từ trên xuống dưới
             if getattr(shape, 'has_table', False):
-                table_texts = []
-                for row_idx, row in enumerate(shape.table.rows):
-                    row_texts = []
-                    for col_idx, cell in enumerate(row.cells):
+                table_texts: List[str] = []
+                for row in shape.table.rows:
+                    row_texts: List[str] = []
+                    for cell in row.cells:
                         cell_text = ""
                         if getattr(cell, 'text_frame', None):
-                            cell_parts = []
+                            cell_parts: List[str] = []
                             for p in cell.text_frame.paragraphs:
                                 if getattr(p, 'runs', None):
                                     run_text = ''.join([r.text for r in p.runs if getattr(r, 'text', None)])
@@ -613,20 +696,15 @@ class MathFormulaProcessor:
                             cell_text = ' '.join(cell_parts) if cell_parts else ""
                         elif getattr(cell, 'text', None):
                             cell_text = cell.text
-                        
                         if cell_text.strip():
                             row_texts.append(cell_text.strip())
-                    
                     if row_texts:
-                        # Ghép các ô trong hàng với dấu cách
                         table_texts.append(' '.join(row_texts))
-                
-                # Ghép các hàng với dấu xuống dòng để giữ cấu trúc
                 return '\n'.join(table_texts)
 
             # Group: traverse children
             if getattr(shape, 'shapes', None) is not None and getattr(shape, 'shape_type', None) is not None and 'GROUP' in str(shape.shape_type):
-                sub_texts = []
+                sub_texts: List[str] = []
                 for sub in shape.shapes:
                     t = self._extract_text_from_shape(sub)
                     if t:
@@ -640,6 +718,7 @@ class MathFormulaProcessor:
             logger.debug(f"_extract_text_from_shape error: {e}")
         return ''
 
+
 # Hàm tiện ích để sử dụng nhanh
 def process_math_text(text: str) -> str:
     """
@@ -648,10 +727,10 @@ def process_math_text(text: str) -> str:
     processor = MathFormulaProcessor()
     return processor.process_special_characters(text)
 
+
 def process_powerpoint_file(pptx_file_path: str) -> Dict:
     """
     Hàm tiện ích để xử lý toàn bộ file PowerPoint
     """
     processor = MathFormulaProcessor()
     return processor.process_powerpoint_text(pptx_file_path)
-
