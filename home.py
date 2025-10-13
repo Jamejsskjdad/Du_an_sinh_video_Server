@@ -310,9 +310,9 @@ def create_home_tab():
             <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px;">
                 <div class="about-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;">
                     <div style="position: relative;">
-                        <video style="width: 100%; border-radius: 16px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);" autoplay muted loop>
-                            <source src="https://assets.mixkit.co/videos/preview/mixkit-man-talking-on-a-video-call-3981-large.mp4" type="video/mp4">
-                        </video>
+                        <img src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/Screenshot 2025-10-02_014315.png"
+                        alt="Ảnh minh họa"
+                        style="width:100%; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
                     </div>
                     <div>
                         <h2 style="font-size: 42px; font-weight: bold; margin-bottom: 24px; background: linear-gradient(135deg, #8B5CF6, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Công Nghệ AI Tiên Tiến</h2>
@@ -350,15 +350,15 @@ def create_home_tab():
                        <div class="tilt-inner feature-card" style="background: white; padding: 32px; border: 1px solid #e5e7eb;">
                          <div class="card-icon" style="width: 64px; height: 64px; background: linear-gradient(135deg, #8B5CF6, #3B82F6); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 24px; color: white;">🎬</div>
                           <h3 style="font-size: 24px; font-weight: bold; margin-bottom: 16px; color: #111827;">Ảnh Thành Video</h3>
-                          <p style="color: #6B7280; line-height: 1.6;">Chuyển đổi bất kỳ ảnh chân dung nào thành video nói chuyện thực tế với đồng bộ môi và biểu cảm khuôn mặt tự nhiên.</p>
+                          <p style="color: #6B7280; line-height: 1.6;">Chuyển đổi bất kỳ ảnh chân dung nào thành video nói chuyện thực tế với đồng bộ môi và biểu cảm khuôn mặt tự nhiên giúp bài giảng trở nên chân thực.</p>
                        </div>
                      </div>
                      <!-- Card 2 -->
                      <div class="tilt">
                        <div class="tilt-inner feature-card" style="background: white; padding: 32px; border: 1px solid #e5e7eb;">
                          <div class="card-icon" style="width: 64px; height: 64px; background: linear-gradient(135deg, #8B5CF6, #3B82F6); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 24px; color: white;">🎵</div>
-                          <h3 style="font-size: 24px; font-weight: bold; margin-bottom: 16px; color: #111827;">Hỗ Trợ Âm Thanh</h3>
-                          <p style="color: #6B7280; line-height: 1.6;">Tải lên file âm thanh của bạn hoặc sử dụng tính năng chuyển văn bản thành giọng nói để làm cho ảnh của bạn nói chuyện với đồng bộ hoàn hảo.</p>
+                          <h3 style="font-size: 24px; font-weight: bold; margin-bottom: 16px; color: #111827;">Hỗ Trợ Nhân Bản, Sử Dụng Giọng Nói Người Thật</h3>
+                          <p style="color: #6B7280; line-height: 1.6;">Tải lên file âm thanh của bạn để nhân bản, sau đó sử dụng phiên bản giọng nói giúp tăng tính chân thực cho video bài giảng.</p>
                        </div>
                      </div>
                      <!-- Card 3 -->
@@ -366,15 +366,16 @@ def create_home_tab():
                        <div class="tilt-inner feature-card" style="background: white; padding: 32px; border: 1px solid #e5e7eb;">
                          <div class="card-icon" style="width: 64px; height: 64px; background: linear-gradient(135deg, #8B5CF6, #3B82F6); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 24px; color: white;">🎨</div>
                           <h3 style="font-size: 24px; font-weight: bold; margin-bottom: 16px; color: #111827;">Tùy Chỉnh</h3>
-                          <p style="color: #6B7280; line-height: 1.6;">Điều chỉnh biểu cảm, thời gian và tùy chỉnh đầu ra để phù hợp với tầm nhìn sáng tạo của bạn.</p>
+                          <p style="color: #6B7280; line-height: 1.6;">Điều chỉnh chất lượng hình ảnh người nói và tốc độ đọc theo yêu cầu.</p>
                        </div>
                      </div>
                      <!-- Card 4 -->
                      <div class="tilt">
                        <div class="tilt-inner feature-card" style="background: white; padding: 32px; border: 1px solid #e5e7eb;">
                          <div class="card-icon" style="width: 64px; height: 64px; background: linear-gradient(135deg, #8B5CF6, #3B82F6); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 24px; color: white;">⚡</div>
-                          <h3 style="font-size: 24px; font-weight: bold; margin-bottom: 16px; color: #111827;">Xử Lý Nhanh</h3>
-                          <p style="color: #6B7280; line-height: 1.6;">Tạo video nói chuyện chất lượng cao trong vài phút, không phải hàng giờ. AI được tối ưu hóa của chúng tôi đảm bảo kết quả nhanh chóng.</p>
+                          <h3 style="font-size: 24px; font-weight: bold; margin-bottom: 16px; color: #111827;">Tự Động Hóa Mọi Quy Trình</h3>
+                          <p style="color: #6B7280; line-height: 1.6;">Tạo video bài giảng với giọng đọc và hình ảnh của giáo viên một cách tự động hóa từ việc lồng ghép slide powerpoit với video hình ảnh giảng viên,
+                           tạo sản phẩm là một video hoàn chỉnh sẵn sàng để tải về.</p>
                        </div>
                      </div>
                      <!-- Card 5 -->
@@ -382,15 +383,15 @@ def create_home_tab():
                        <div class="tilt-inner feature-card" style="background: white; padding: 32px; border: 1px solid #e5e7eb;">
                          <div class="card-icon" style="width: 64px; height: 64px; background: linear-gradient(135deg, #8B5CF6, #3B82F6); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 24px; color: white;">🔒</div>
                           <h3 style="font-size: 24px; font-weight: bold; margin-bottom: 16px; color: #111827;">Bảo Mật</h3>
-                          <p style="color: #6B7280; line-height: 1.6;">Ảnh và video của bạn được xử lý an toàn và không bao giờ được lưu trữ trên máy chủ của chúng tôi sau khi xử lý.</p>
+                          <p style="color: #6B7280; line-height: 1.6;">Ảnh và video bài giảng của bạn được xử lý an toàn và không bao giờ được lưu trữ trên máy chủ của chúng tôi sau khi xử lý.</p>
                        </div>
                      </div>
                      <!-- Card 6 -->
                      <div class="tilt">
                        <div class="tilt-inner feature-card" style="background: white; padding: 32px; border: 1px solid #e5e7eb;">
                          <div class="card-icon" style="width: 64px; height: 64px; background: linear-gradient(135deg, #8B5CF6, #3B82F6); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 24px; color: white;">📱</div>
-                          <h3 style="font-size: 24px; font-weight: bold; margin-bottom: 16px; color: #111827;">Nhiều Định Dạng</h3>
-                          <p style="color: #6B7280; line-height: 1.6;">Xuất ra nhiều định dạng và độ phân giải phù hợp cho mạng xã hội, thuyết trình hoặc sử dụng cá nhân.</p>
+                          <h3 style="font-size: 24px; font-weight: bold; margin-bottom: 16px; color: #111827;">Xuất bản video</h3>
+                          <p style="color: #6B7280; line-height: 1.6;">Có thể xem trực tiếp video trước khi tải xuống.</p>
                        </div>
                      </div>
                 </div>
@@ -427,8 +428,8 @@ def create_home_tab():
                     <div class="step" style="display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; margin-bottom: 80px;">
                         <div class="stepfx">
                             <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #8B5CF6, #3B82F6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px; margin-bottom: 24px;">3</div>
-                            <h3 style="font-size: 28px; font-weight: bold; margin-bottom: 16px; color: #111827;">Xử Lý AI</h3>
-                            <p style="font-size: 18px; color: #6B7280; line-height: 1.6;">AI tiên tiến của chúng tôi phân tích ảnh và âm thanh để tạo chuyển động khuôn mặt tự nhiên và đồng bộ môi.</p>
+                            <h3 style="font-size: 28px; font-weight: bold; margin-bottom: 16px; color: #111827;">Chọn ngông ngữ và giọng đọc</h3>
+                            <p style="font-size: 18px; color: #6B7280; line-height: 1.6;">Có thể chọn giọng đọc có sẵn hoặc giọng đọc nhân bản, với giọng nhân bản cần tải file mp3 chứa giọng đọc, sau đó chọn bản giọng đọc của mình rồi chọn ngôn ngữ của nội dung slide</p>
                         </div>
                         <div class="stepfx" style="background: white; border-radius: 16px; padding: 32px; text-align: center; border: 1px solid #e5e7eb; font-size: 48px;">🤖</div>
                     </div>
@@ -446,7 +447,7 @@ def create_home_tab():
                         <div class="stepfx">
                             <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #8B5CF6, #3B82F6); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 20px; margin-bottom: 24px;">5</div>
                             <h3 style="font-size: 28px; font-weight: bold; margin-bottom: 16px; color: #111827;">Tải Xuống</h3>
-                            <p style="font-size: 18px; color: #6B7280; line-height: 1.6;">Xuất video nói chuyện hoàn thành theo định dạng và độ phân giải ưa thích của bạn, sẵn sàng chia sẻ hoặc sử dụng.</p>
+                            <p style="font-size: 18px; color: #6B7280; line-height: 1.6;">Xuất video bài giảng hoàn chỉnh sẵn sàng chia sẻ hoặc sử dụng.</p>
                         </div>
                         <div class="stepfx" style="background: white; border-radius: 16px; padding: 32px; text-align: center; border: 1px solid #e5e7eb; font-size: 48px;">⬇️</div>
                     </div>
