@@ -172,7 +172,7 @@ def pip_composite_ffmpeg(slide_png, teacher_mp4, out_mp4,
 
 
 def generate_video_for_text(sad_talker, source_image, text, language, voice_mode, cloned_voice_name, cloned_lang,
-                            preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style):
+                            preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style, gender=None, builtin_voice=None):
     max_retries = 3
     retry_count = 0
     while retry_count < max_retries:
@@ -196,7 +196,12 @@ def generate_video_for_text(sad_talker, source_image, text, language, voice_mode
                 if audio_path is None:
                     audio_path = convert_text_to_audio(text, language)
             else:
-                audio_path = convert_text_to_audio(text, language)
+                audio_path = convert_text_to_audio(
+                    text=text,
+                    language=language,
+                    gender=gender,
+                    preferred_voice=builtin_voice or None
+                )
 
             if not audio_path:
                 print("Failed to convert text to audio")
@@ -240,7 +245,7 @@ def generate_video_for_text(sad_talker, source_image, text, language, voice_mode
     return None
 
 def create_lecture_video(sad_talker, slides_data, source_image, language, voice_mode, cloned_voice_name, cloned_lang,
-                         preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style):
+                         preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style, gender=None, builtin_voice=None):
     try:
         if not slides_data:
             return None, "❌ Không có slide nào để xử lý!"
@@ -326,7 +331,8 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
             teacher_video_path = generate_video_for_text(
                 sad_talker, safe_image_path, slide_data['text'], language, voice_mode,
                 cloned_voice_name, cloned_lang, preprocess_type, is_still_mode,
-                enhancer, batch_size, size_of_image, pose_style
+                enhancer, batch_size, size_of_image, pose_style,
+                gender=gender, builtin_voice=builtin_voice
             )
             cleanup_cuda_memory()
 
@@ -454,13 +460,20 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
         print(f"Error in create_lecture_video: {str(e)}")
         return None, f"❌ Lỗi tạo video bài giảng: {str(e)}"
 
-def generate_lecture_video_handler(sad_talker, pptx, img, lang, voice_mode, cloned_voice, cloned_lang, preprocess, still, enh, batch, size, pose):
+def generate_lecture_video_handler(
+    sad_talker, pptx, img, lang, voice_mode, cloned_voice, gender, builtin_voice,
+    cloned_lang, preprocess, still, enh, batch, size, pose
+):
     if not pptx or not img:
         return None
     slides_data = extract_slides_from_pptx(pptx)
     if not slides_data:
         return None
     return create_lecture_video(
-        sad_talker, slides_data, img, lang, voice_mode, cloned_voice, cloned_lang,
-        preprocess, still, enh, batch, size, pose
+        sad_talker, slides_data, img,
+        lang or 'vi',                  # 🔧 default 'vi' nếu lang rỗng
+        voice_mode, cloned_voice, cloned_lang,
+        preprocess, still, enh, batch, size, pose,
+        gender=gender or 'Nữ',         # 🔧 fallback default
+        builtin_voice=builtin_voice
     )

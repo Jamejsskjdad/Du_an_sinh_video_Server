@@ -21,10 +21,35 @@ from pdf2image import convert_from_path
 from src.utils.math_formula_processor import MathFormulaProcessor, process_math_text
 from src.utils.xtts_clone import create_cloned_voice, list_supported_languages
 import unicodedata
+import asyncio
+try:
+    import edge_tts  # cho chọn voice nam/nữ
+except Exception:
+    edge_tts = None
 
 # Thiết lập logging
 logger = logging.getLogger(__name__)
-
+# Voice mẫu phổ biến, bạn có thể bổ sung thêm
+EDGE_VOICE_BY_LANG_GENDER = {
+    "vi": {"Nữ": "vi-VN-HoaiMyNeural",      "Nam": "vi-VN-NamMinhNeural"},
+    "en": {"Nữ": "en-US-JennyNeural",        "Nam": "en-US-GuyNeural"},
+    "zh": {"Nữ": "zh-CN-XiaoxiaoNeural",     "Nam": "zh-CN-YunxiNeural"},
+    "ja": {"Nữ": "ja-JP-NanamiNeural",       "Nam": "ja-JP-KeitaNeural"},
+    "ko": {"Nữ": "ko-KR-SunHiNeural",        "Nam": "ko-KR-InJoonNeural"},
+    "fr": {"Nữ": "fr-FR-DeniseNeural",       "Nam": "fr-FR-HenriNeural"},
+    "de": {"Nữ": "de-DE-KatjaNeural",        "Nam": "de-DE-ConradNeural"},
+    "es": {"Nữ": "es-ES-ElviraNeural",       "Nam": "es-ES-AlvaroNeural"},
+    "it": {"Nữ": "it-IT-ElsaNeural",         "Nam": "it-IT-IsmaelNeural"},
+    "pt": {"Nữ": "pt-BR-FranciscaNeural",    "Nam": "pt-BR-AntonioNeural"},
+}
+def get_edge_voice(lang_code: str, gender_label: str) -> str | None:
+    try:
+        return EDGE_VOICE_BY_LANG_GENDER.get(lang_code, {}).get(gender_label)
+    except Exception:
+        return None
+async def _edge_tts_save(text: str, voice: str, out_path: str):
+    communicate = edge_tts.Communicate(text=text, voice=voice, rate="+0%", volume="+0%")
+    await communicate.save(out_path)
 
 
 def _get_cloned_voice_options(root_dir='./cloned_voices'):
@@ -118,28 +143,33 @@ def convert_pptx_to_images(pptx_path, dpi=220):
     # Trả về danh sách đường dẫn ảnh theo thứ tự slide
     return img_paths
 
-def convert_text_to_audio(text, language='vi'):
-    """
-    Convert text to audio using gTTS
-    Returns the path to the generated audio file
-    """
+def convert_text_to_audio(text, language='vi', gender='Nữ', preferred_voice: str | None = None):
     try:
+        language = language or 'vi'  # 🔧 Bổ sung dòng này
         if not text or text.strip() == "":
             return None
-        
-        # Create a temporary file for the audio
-        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
-        temp_path = temp_file.name
-        temp_file.close()
-        
-        # Convert text to speech
+
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
+        out_path = tmp.name
+        tmp.close()
+
+        voice = preferred_voice or get_edge_voice(language, gender)
+        if edge_tts is not None and voice:
+            print(f"[TTS] Using Edge TTS voice: {voice} (lang={language}, gender={gender})")
+            try:
+                asyncio.run(_edge_tts_save(text, voice, out_path))
+                return out_path
+            except Exception as e:
+                logger.warning(f"Edge TTS failed, fallback gTTS. Reason: {e}")
+
+        print(f"[TTS] Using gTTS (no voice/gender control). lang={language}")
         tts = gTTS(text=text, lang=language, slow=False)
-        tts.save(temp_path)
-        
-        # Return the audio file path directly for Gradio Audio component
-        return temp_path
+        tts.save(out_path)
+        return out_path
     except Exception as e:
+        logger.exception(f"TTS error: {e}")
         return None
+
 
 def read_text_file(file):
     """
@@ -515,6 +545,23 @@ def set_lecture_fast_mode():
     """Set fast mode preset for lecture generation"""
     return 256, 'crop', False, 2, False, 0
 
+def _list_edge_voices_for(lang_code: str, gender: str):
+    v = EDGE_VOICE_BY_LANG_GENDER.get(lang_code or "", {})
+    if not v:
+        return []
+    if gender in ("Nam","Nữ"):
+        return [v.get(gender)] if v.get(gender) else []
+    # không xảy ra, nhưng giữ phòng hờ
+    return list(v.values())
+
+def _on_builtin_lang_or_gender_change(lang, gender):
+    voices = _list_edge_voices_for(lang, gender)
+    # auto select giọng tương ứng (nếu có)
+    value = voices[0] if voices else None
+    return gr.update(choices=voices, value=value)
+
+
+
 def create_lecture_input_interface():
     """Tạo giao diện input cho lecture"""
     
@@ -550,7 +597,28 @@ def create_lecture_input_interface():
                     label="Ngôn ngữ giảng bài",
                     elem_id="lecture_audio_language"
                 )
+                # NEW: chọn giới tính
+                lecture_builtin_gender = gr.Radio(
+                    choices=["Nữ", "Nam"], value="Nữ",
+                    label="Giọng đọc"
+                )
 
+                # NEW: chọn voice cụ thể (tự đổi theo language + gender)
+                lecture_builtin_voice = gr.Dropdown(
+                    choices=[], value=None,
+                    label="Giọng cụ thể (tùy chọn)",
+                    info="Nếu để trống sẽ dùng voice mặc định theo ngôn ngữ + giới tính."
+                )
+                lecture_audio_language.change(
+                    fn=_on_builtin_lang_or_gender_change,
+                    inputs=[lecture_audio_language, lecture_builtin_gender],
+                    outputs=[lecture_builtin_voice]
+                )
+                lecture_builtin_gender.change(
+                    fn=_on_builtin_lang_or_gender_change,
+                    inputs=[lecture_audio_language, lecture_builtin_gender],
+                    outputs=[lecture_builtin_voice]
+                )
             # Cloned voice block (accordion thu nhỏ)
             cloned_block = gr.Accordion("🧬 Sử dụng giọng đọc nhân bản (XTTS-v2)", open=False, visible=False)
             with cloned_block:
@@ -678,5 +746,7 @@ def create_lecture_input_interface():
         'enhancer': lecture_enhancer,
         'fast_mode_btn': lecture_fast_mode_btn,
         'final_video': lecture_final_video,
-        'info': lecture_info
+        'info': lecture_info,
+        'builtin_gender': lecture_builtin_gender,
+        'builtin_voice': lecture_builtin_voice
     }
