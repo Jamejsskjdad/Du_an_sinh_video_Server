@@ -8,7 +8,7 @@ def create_home_tab():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>SadTalker - Tạo Video Nói Chuyện Từ Ảnh</title>
+        <title>Hệ Thống Sinh Video Bài Giảng</title>
         <style>
             :root{
               --violet:#8B5CF6; --blue:#3B82F6;
@@ -205,6 +205,35 @@ def create_home_tab():
                 60% { transform: translateY(-5px); }
             }
 
+            /* --- Scroll button in Hero --- */
+            .hero { position: relative; }
+
+            .scroll-down {
+            position: absolute;
+            left: 50%;
+            bottom: 32px;               /* chỉnh khoảng cách với mép dưới tại đây */
+            transform: translateX(-50%);
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            color: #fff;
+            text-decoration: none;
+            opacity: .95;
+            transition: transform .2s ease, opacity .2s ease;
+            }
+
+            .scroll-down:hover { opacity: 1; transform: translateX(-50%) translateY(-2px); }
+            .scroll-down .arrow { font-size: 24px; animation: bounce 2s infinite; }
+
+            /* tránh header che nội dung khi cuộn tới anchor */
+            section[id] { scroll-margin-top: 80px; }
+
+            /* mobile: kéo nút lên một chút cho an toàn */
+            @media (max-width: 768px) {
+            .scroll-down { bottom: 24px; }
+            }
+
             /* Responsive (giữ như cũ) */
             @media (max-width: 768px) {
                 .hero-content { grid-template-columns: 1fr !important; text-align: center; }
@@ -245,39 +274,36 @@ def create_home_tab():
         </nav>
 
         <!-- Hero Section -->
-        <section style="min-height: 100vh; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e40af 100%); position: relative; display: flex; align-items: center; overflow: hidden;">
-            <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; width: 100%;">
-                <div class="hero-content" style="display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; position: relative; z-index: 2;">
-                    <div class="hero-text">
-                        <h1 style="font-size: 56px; font-weight: bold; line-height: 1.1; margin-bottom: 24px; color: white;">
-                            <span style="background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Tạo Video Nói Chuyện</span><br>
-                            Từ Ảnh Với AI
-                        </h1>
-                        <p style="font-size: 20px; color: rgba(255, 255, 255, 0.8); margin-bottom: 32px; line-height: 1.6;">
-                            Chuyển đổi bất kỳ ảnh chân dung nào thành video nói chuyện thực tế bằng công nghệ AI tiên tiến. Không cần kỹ năng kỹ thuật.
-                        </p>
-                                                 <!-- Nút Bắt Đầu Tạo Video: class đặc biệt -->
-                         <button class="btnfx btn-special"
-                             style="padding: 16px 32px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600; box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);"
-                             onclick="(function(){var b=document.querySelector('#nav_get_started_btn'); if(b){ b.click(); }})();">
-                             Bắt Đầu Tạo Video
-                         </button>
-                    </div>
-                    <div style="position: relative;">
-                        <div style="background: rgba(255, 255, 255, 0.1); border-radius: 16px; padding: 8px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);">
-                            <video style="width: 100%; border-radius: 12px; display: block;" autoplay muted loop>
-                                <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-talking-on-a-video-call-3980-large.mp4" type="video/mp4">
-                            </video>
-                        </div>
-                    </div>
-                </div>
-                <a href="#about" style="position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); color: white; text-align: center; cursor: pointer; text-decoration:none;"
-                   onclick="(d=>d&&d.scrollIntoView({behavior:'smooth',block:'start'}))(document.querySelector('#about'))">
-                    <div>Cuộn Xuống</div>
-                    <div style="font-size: 24px; animation: bounce 2s infinite;">↓</div>
-                </a>
-            </div>
+        <section class="hero" style="
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e40af 100%);
+        position: relative;
+        overflow: hidden;">
+
+        <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px; text-align: center;">
+            <h1 style="font-size: 56px; font-weight: bold; margin-bottom: 24px; color: white;">
+            <span style="background: linear-gradient(135deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+                Hệ thống sinh video bài giảng tự động
+            </span>
+            </h1>
+            <p style="font-size: 20px; color: rgba(255,255,255,0.8); margin-bottom: 32px; line-height:1.6;">
+            Sinh Các Video Bài Giảng Sử Dụng AI Tạo Chuyển Động Khuôn Miệng Cho Hình Ảnh Chân Dung.
+            </p>
+            <button class="btnfx btn-special" style="padding:16px 32px; border:none; border-radius:12px; font-size:18px; font-weight:600; box-shadow:0 10px 30px rgba(139,92,246,0.3);"
+            onclick="(function(){var b=document.querySelector('#nav_get_started_btn'); if(b){b.click();}})();">
+            Bắt Đầu Tạo Video
+            </button>
+            <!-- Nút cuộn xuống -->
+            <a href="#about" class="scroll-down">
+                <span>Cuộn Xuống</span>
+                <span class="arrow">↓</span>
+            </a>
+        </div>
         </section>
+
 
         <!-- About Section -->
         <section id="about" style="padding: 120px 0; background: #f8fafc;">
@@ -291,10 +317,10 @@ def create_home_tab():
                     <div>
                         <h2 style="font-size: 42px; font-weight: bold; margin-bottom: 24px; background: linear-gradient(135deg, #8B5CF6, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Công Nghệ AI Tiên Tiến</h2>
                         <p style="font-size: 18px; color: #6B7280; margin-bottom: 24px; line-height: 1.7;">
-                            Trí tuệ nhân tạo tiên tiến của chúng tôi chuyển đổi ảnh tĩnh thành video nói chuyện sống động với độ chính xác đáng kinh ngạc và biểu cảm tự nhiên.
+                            Áp dụng mô hình học sâu Sadtaker để tạo chuyển động khuôn mặt và khuôn miệng trong việc đọc các nội dung
                         </p>
                         <p style="font-size: 18px; color: #6B7280; margin-bottom: 24px; line-height: 1.7;">
-                            Sử dụng thuật toán học sâu được huấn luyện trên hàng triệu biểu cảm khuôn mặt và mẫu giọng nói, SadTalker tạo ra video gần như không thể phân biệt với bản ghi thực.
+                           Từ đó tạo ra video bài giảng hoàn chỉnh với cấu trúc gồm có slide powerpoit và giảng viên đọc nội dung slide powerpoit
                         </p>
                         <div class="features-list" style="display: flex; gap: 32px; margin-top: 32px;">
                             <div style="display: flex; align-items: center; gap: 12px;">

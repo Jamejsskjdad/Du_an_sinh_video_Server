@@ -551,10 +551,9 @@ def create_lecture_input_interface():
                     elem_id="lecture_audio_language"
                 )
 
-            # Cloned voice block placeholder
-            cloned_block = gr.Group(visible=False)
+            # Cloned voice block (accordion thu nhỏ)
+            cloned_block = gr.Accordion("🧬 Sử dụng giọng đọc nhân bản (XTTS-v2)", open=False, visible=False)
             with cloned_block:
-                gr.Markdown("### 🧬 Sử dụng giọng đọc nhân bản (XTTS‑v2)")
                 clone_upload = gr.File(
                     label="Tải lên file mp3 giọng mẫu (để tạo bản clone)",
                     file_types=[".mp3"],
@@ -567,15 +566,14 @@ def create_lecture_input_interface():
                     value=None,
                     elem_id="cloned_voice_list"
                 )
-                # Language for XTTS‑v2 content generation (full list later)
                 cloned_voice_lang = gr.Dropdown(
                     choices=list_supported_languages(),
                     value=None,
-                    label="Ngôn ngữ nội dung (XTTS‑v2)",
+                    label="Ngôn ngữ nội dung (XTTS-v2)",
                     elem_id="cloned_voice_language"
                 )
                 clone_status = gr.Textbox(label="Trạng thái giọng nhân bản", interactive=False)
-            
+
             # Preview extracted slides
             gr.Markdown("### 📝 Nội dung từ PowerPoint")
             lecture_slides_preview = gr.Textbox(
@@ -596,15 +594,10 @@ def create_lecture_input_interface():
             generate_lecture_btn = gr.Button(
                 '🎬 Tạo Video Bài Giảng',
                 elem_id="generate_lecture_btn",
-                variant='primary'
+                variant='primary',
+                js="() => { document.getElementById('lecture_final_video1').scrollIntoView({behavior: 'smooth'}); }"
             )
-            
-            # Status
-            lecture_status = gr.Textbox(
-                label="Trạng thái xử lý",
-                interactive=False,
-                elem_id="lecture_status"
-            )
+                       
         
         with gr.Column(variant='panel'):
             # Settings
@@ -634,7 +627,7 @@ def create_lecture_input_interface():
             # Results placeholder (will be connected to output module)
             with gr.Tabs(elem_id="lecture_results"):
                 gr.Markdown("### 🎬 Video Bài Giảng")
-                lecture_final_video = gr.Video(label="Video bài giảng hoàn chỉnh", format="mp4").style(width=512)
+                lecture_final_video = gr.Video(label="Video bài giảng hoàn chỉnh", elem_id="lecture_final_video1", format="mp4").style(width=512)
                 
                 gr.Markdown("### 📊 Thông tin Video")
                 lecture_info = gr.Textbox(
@@ -677,7 +670,6 @@ def create_lecture_input_interface():
         'slides_preview': lecture_slides_preview,
         'extract_btn': extract_lecture_slides_btn,
         'generate_btn': generate_lecture_btn,
-        'status': lecture_status,
         'pose_style': lecture_pose_style,
         'size_of_image': lecture_size_of_image,
         'preprocess_type': lecture_preprocess_type,

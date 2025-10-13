@@ -448,7 +448,7 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
         cleanup_cuda_memory()
         print(f"✅ Lecture video created: {final_video_path}")
         status_text = f"✅ Hoàn thành! Đã tạo video bài giảng với {len(slides_data)} slide, tổng thời gian (ước tính): {total_duration:.1f}s"
-        return final_video_path, status_text
+        return final_video_path
 
     except Exception as e:
         print(f"Error in create_lecture_video: {str(e)}")
@@ -456,10 +456,10 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
 
 def generate_lecture_video_handler(sad_talker, pptx, img, lang, voice_mode, cloned_voice, cloned_lang, preprocess, still, enh, batch, size, pose):
     if not pptx or not img:
-        return None, "❌ Vui lòng chọn file PowerPoint và ảnh giáo viên!"
+        return None
     slides_data = extract_slides_from_pptx(pptx)
     if not slides_data:
-        return None, "❌ Không thể trích xuất nội dung từ PowerPoint!"
+        return None
     return create_lecture_video(
         sad_talker, slides_data, img, lang, voice_mode, cloned_voice, cloned_lang,
         preprocess, still, enh, batch, size, pose

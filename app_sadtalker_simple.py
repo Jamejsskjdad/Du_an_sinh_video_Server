@@ -114,7 +114,7 @@ def sadtalker_demo_with_home(checkpoint_path='checkpoints', config_path='src/con
                         input_components['size_of_image'], 
                         input_components['pose_style']
                     ],
-                    outputs=[input_components['final_video'], input_components['status']]
+                    outputs=[input_components['final_video']]
                 )
         
         # Kết nối events để chuyển đổi trang
