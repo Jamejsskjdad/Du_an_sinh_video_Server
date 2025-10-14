@@ -17,6 +17,26 @@ class MathFormulaProcessor:
     """
     Xử lý các ký tự đặc biệt và công thức toán học từ PowerPoint
     """
+    def _mathiness_score(self, s: str) -> int:
+        """Điểm 'tính toán học' theo số toán tử/ký hiệu đặc trưng."""
+        if not s:
+            return 0
+        ops = r"[+\-*/=^×÷⋅·]|∑|∏|√|∫|≈|≠|≤|≥|⊂|⊃|∈|∉"
+        funcs = r"\b(sin|cos|tan|log|ln|lim|exp)\b"
+        score = len(re.findall(ops, s))
+        score += 2 * len(re.findall(funcs, s, flags=re.IGNORECASE))
+        # có superscript/subscript unicode?
+        if re.search(r"[⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉]", s):
+            score += 2
+        return score
+
+    def _is_math_line(self, s: str) -> bool:
+        """Heuristic: coi là toán nếu có >=2 toán tử/ký hiệu, hoặc có dấu ^, ∑, ∫, √…"""
+        if not s:
+            return False
+        if re.search(r"[∑∏√∫^]", s):
+            return True
+        return self._mathiness_score(s) >= 2
 
     def __init__(self):
         # Bảng tra cứu ký tự đặc biệt sang tiếng Việt
@@ -195,6 +215,7 @@ class MathFormulaProcessor:
             'ℊ': ' g',
             'ℴ': ' o',
             'ℵ': ' aleph',
+            '=': ' bằng',
         }
 
         # Mẫu regex để nhận diện các công thức toán học đơn giản
@@ -216,31 +237,69 @@ class MathFormulaProcessor:
             # Tích: Π
             (r'Π([^=]+)=([^=]+)', r'tích của \1 từ \2'),
         ]
+        # Regex toán tử ASCII an toàn (chỉ áp dụng trong 'math line')
+        self.math_ascii_patterns = [
+            # tỉ số a:b -> a chia b (giữa các số)
+            (re.compile(r'(\b\d+)\s*:\s*(\d+\b)'), r'\1 chia \2'),
+
+            # cộng/trừ/nhân/chia/bằng khi có toán hạng hai bên (chữ/số/ngoặc)
+            (re.compile(r'(\b[\w\)\]])\s*\+\s*([\w\(\[]\b)'), r'\1 cộng \2'),
+            (re.compile(r'(\b[\w\)\]])\s*-\s*([\w\(\[]\b)'), r'\1 trừ \2'),
+            (re.compile(r'(\b[\w\)\]])\s*\*\s*([\w\(\[]\b)'), r'\1 nhân \2'),
+            (re.compile(r'(\b[\w\)\]])\s*/\s*([\w\(\[]\b)'), r'\1 chia \2'),
+            (re.compile(r'(\b[\w\)\]])\s*=\s*([\w\(\[]\b)'), r'\1 bằng \2'),
+
+            # số âm ở đầu token: -3 -> âm 3 (không đụng gạch nối trong từ)
+            (re.compile(r'(?<![\w\.])-([0-9]+)\b'), r'âm \1'),
+
+            # lũy thừa ASCII ^ (giữa biến/số và số/chữ)
+            (re.compile(r'([A-Za-z0-9])\s*\^\s*([0-9]+)'), r'\1 mũ \2'),
+            (re.compile(r'([A-Za-z0-9])\s*\^\s*([A-Za-z]+)'), r'\1 mũ \2'),
+
+            # 'x' là dấu nhân **chỉ khi** có khoảng trắng hai bên hoặc kẹp giữa số/biến và số/biến
+            (re.compile(r'(?<=\b[\da-wyzA-WYZ])\s+x\s+(?=[\da-wyzA-WYZ]\b)'), r' nhân '),
+        ]
+
 
     def process_special_characters(self, text: str) -> str:
-        """
-        Chuyển đổi các ký tự đặc biệt thành văn bản tiếng Việt
-        """
         if not text:
             return text
 
         processed_text = text
 
-        # Bước 1: Xử lý các mẫu toán học phức tạp TRƯỚC
+        # 1) Quy tắc "toán học phức tạp" sẵn có (giữ nguyên)
         for pattern, replacement in self.math_patterns:
             processed_text = re.sub(pattern, replacement, processed_text)
 
-        # Bước 2: Xử lý từng ký tự đặc biệt
-        for special_char, replacement in self.special_char_map.items():
+        # 1.5) Nếu dòng có tính toán học cao, áp dụng thêm ASCII math patterns
+        if self._is_math_line(processed_text):
+            for rx, repl in self.math_ascii_patterns:
+                processed_text = rx.sub(repl, processed_text)
+
+        # 2) Bản đồ ký hiệu Unicode + fallback ASCII (không đụng '.')
+        #    THÊM các cặp fallback an toàn cho ASCII (chỉ khi còn sót)
+        ascii_fallbacks = {
+            '+': ' cộng', '-': ' trừ', '=': ' bằng',
+            '/': ' chia', '*': ' nhân', '^': ' mũ ', ':': ' chia ',
+            # tuyệt đối KHÔNG thêm '.' ở đây
+        }
+        # gộp với map sẵn có (ưu tiên map sẵn có)
+        merged_map = dict(ascii_fallbacks)
+        merged_map.update(self.special_char_map)
+        for special_char, replacement in merged_map.items():
+            # bỏ qua '.' nếu lỡ có
+            if special_char == '.':
+                continue
             processed_text = processed_text.replace(special_char, replacement)
 
-        # Bước 3: Xử lý các ký tự Unicode khác
+        # 3) Unicode khác
         processed_text = self._process_unicode_chars(processed_text)
 
-        # Bước 4: Làm sạch văn bản
+        # 4) Làm sạch
         processed_text = self._clean_text(processed_text)
 
         return processed_text
+
 
     def debug_process(self, text: str) -> Dict[str, str]:
         """
