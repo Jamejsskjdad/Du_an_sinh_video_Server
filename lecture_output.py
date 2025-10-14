@@ -97,67 +97,66 @@ def _find_reference_wav_by_display_name(display_name: str, voices_root: str = '.
         return None
     return None
 
+def _ensure_even_image(path):
+    from PIL import Image
+    im = Image.open(path)
+    w, h = im.size
+    new_w = w + (w & 1)   # +1 nếu lẻ
+    new_h = h + (h & 1)
+    if new_w != w or new_h != h:
+        bg = Image.new(im.mode, (new_w, new_h), (255, 255, 255))
+        bg.paste(im, (0, 0))
+        bg.save(path)
+
 # ===== NEW: overlay bằng ffmpeg (nhanh) =====
 def pip_composite_ffmpeg(slide_png, teacher_mp4, out_mp4,
                          pip_ratio=0.10, margin=50, prefer_nvenc=True,
                          fps=25):
-    """
-    Lồng video teacher (input #1) lên ảnh slide (input #0) bằng ffmpeg.
-    - pip_ratio: tỉ lệ bề rộng teacher so với bề rộng slide (ví dụ 0.10 = 10%)
-    - margin: lề từ mép phải & trên (px)
-    - prefer_nvenc: thử h264_nvenc trước, nếu lỗi fallback libx264
-    - fps: frame rate đầu ra
-    """
     import shutil as _shutil
     from PIL import Image
 
     if not _shutil.which("ffmpeg"):
         raise RuntimeError("ffmpeg không có trong PATH")
 
-    # 1) Đọc kích thước slide bằng PIL để tính sẵn chiều rộng PIP theo pip_ratio
-    try:
-        with Image.open(slide_png) as im:
-            slide_w, slide_h = im.size
-    except Exception as e:
-        raise RuntimeError(f"Không đọc được kích thước slide: {e}")
+    # Ép ảnh slide về kích thước chẵn ngay từ gốc
+    _ensure_even_image(slide_png)
 
-    teacher_target_w = max(1, int(slide_w * pip_ratio))  # ví dụ 10% bề rộng slide
+    # Đọc kích thước slide để tính tỷ lệ PIP
+    with Image.open(slide_png) as im:
+        slide_w, slide_h = im.size
+    teacher_target_w = max(1, int(slide_w * pip_ratio))
 
-    # 2) Chọn codec
     vcodec = "h264_nvenc" if prefer_nvenc else "libx264"
     preset = "p5" if vcodec == "h264_nvenc" else "ultrafast"
 
-    # 3) Filter graph:
-    #    - scale teacher về width=teacher_target_w, height tự suy ra (-1)
-    #    - overlay vào góc trên phải
-    #    - NHỚ gắn nhãn [vout] và map [vout]
+    # Pad slide -> kích thước chẵn; scale teacher; overlay; ép về yuv420p; đặt nhãn [vout]
     filter_complex = (
-        f"[1:v]scale={teacher_target_w}:-1[tp];"
-        f"[0:v][tp]overlay=W-w-{margin}:{margin},format=yuv420p[vout]"
-    )
+        "[0:v]pad=ceil(iw/2)*2:ceil(ih/2)*2[bg];"
+        f"[1:v]scale={teacher_target_w}:-2:flags=lanczos[face];"
+        "[bg][face]overlay=W-w-{m}:{m},format=yuv420p[vout]"
+    ).format(m=margin)
 
     cmd = [
         "ffmpeg", "-y",
-        "-loop", "1", "-i", slide_png,     # input 0: ảnh (loop)
-        "-i", teacher_mp4,                  # input 1: video teacher
+        "-loop", "1", "-i", slide_png,     # 0:v = ảnh (loop)
+        "-i", teacher_mp4,                  # 1:v = video giáo viên
         "-filter_complex", filter_complex,
-        "-map", "[vout]",                   # video sau overlay
+        "-map", "[vout]",                   # video đã overlay
         "-map", "1:a?",                     # audio từ teacher nếu có
         "-c:v", vcodec,
         "-preset", preset,
         "-pix_fmt", "yuv420p",
         "-r", str(fps),
-        "-shortest",                        # dừng theo stream ngắn hơn (thường theo audio/video teacher)
-        "-c:a", "copy",
+        "-shortest",
+        "-c:a", "copy",                     # nếu đôi khi lỗi, đổi thành: "aac"
         out_mp4
     ]
 
-    # 4) Chạy, fallback libx264 nếu nvenc lỗi
     try:
         p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if p.returncode != 0:
-            # Nếu đang dùng nvenc thì thử lại libx264
             if vcodec == "h264_nvenc":
+                # fallback libx264
                 return pip_composite_ffmpeg(slide_png, teacher_mp4, out_mp4,
                                             pip_ratio, margin, prefer_nvenc=False, fps=fps)
             else:
@@ -168,7 +167,6 @@ def pip_composite_ffmpeg(slide_png, teacher_mp4, out_mp4,
             return pip_composite_ffmpeg(slide_png, teacher_mp4, out_mp4,
                                         pip_ratio, margin, prefer_nvenc=False, fps=fps)
         raise
-
 
 
 def generate_video_for_text(sad_talker, source_image, text, language, voice_mode, cloned_voice_name, cloned_lang,
@@ -450,11 +448,10 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
                         temp_dirs_deleted += 1
                     except Exception:
                         pass
-
         cleanup_cuda_memory()
         print(f"✅ Lecture video created: {final_video_path}")
         status_text = f"✅ Hoàn thành! Đã tạo video bài giảng với {len(slides_data)} slide, tổng thời gian (ước tính): {total_duration:.1f}s"
-        return final_video_path
+        return final_video_path, status_text        
 
     except Exception as e:
         print(f"Error in create_lecture_video: {str(e)}")
@@ -465,15 +462,17 @@ def generate_lecture_video_handler(
     cloned_lang, preprocess, still, enh, batch, size, pose
 ):
     if not pptx or not img:
-        return None
+        return None, "❌ Vui lòng chọn đủ ảnh giáo viên và file PowerPoint!"
+
     slides_data = extract_slides_from_pptx(pptx)
     if not slides_data:
-        return None
+        return None, "❌ Không trích xuất được slide nào từ PowerPoint!"
+
     return create_lecture_video(
         sad_talker, slides_data, img,
-        lang or 'vi',                  # 🔧 default 'vi' nếu lang rỗng
+        lang or 'vi',
         voice_mode, cloned_voice, cloned_lang,
         preprocess, still, enh, batch, size, pose,
-        gender=gender or 'Nữ',         # 🔧 fallback default
+        gender=gender or 'Nữ',
         builtin_voice=builtin_voice
     )

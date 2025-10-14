@@ -10,6 +10,46 @@ def create_home_tab():
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Hệ Thống Sinh Video Bài Giảng</title>
         <style>
+            .showcase-card .overlay{
+            pointer-events: none !important;   /* cho click xuyên qua */
+            z-index: 2;
+            }
+            /* Đảm bảo video nhận click, caption không chặn click */
+            .showcase-card { position: relative; }
+            .showcase-card::after { pointer-events: none !important; }
+
+            .showcase-card video{
+            position: relative;
+            z-index: 5;                 /* video nằm trên */
+            pointer-events: auto;
+            display: block;
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            transform: translateZ(0);   /* fix một số lỗi hit-test trên Chrome */
+            }
+
+            .showcase-card .show-title{
+            position: absolute;
+            left: 16px;
+            bottom: 16px;
+            color: #fff;
+            font-weight: 600;
+            z-index: 1;                 /* dưới video */
+            pointer-events: none;       /* không bắt click, tránh che nửa trái */
+            }
+            /* Chỉ video được nhận click, mọi phần tử con khác trong card đều không */
+            .showcase-card, .tilt, .tilt-inner { position: relative; }
+            .showcase-card * { pointer-events: none !important; }   /* chặn mọi chồng lấn */
+            .showcase-card video { pointer-events: auto !important; z-index: 10; position: relative; }
+            /* Tắt nghiêng 3D cho các thẻ video trong khu vực showcase để tránh bug hit-test */
+            .showcase-grid .tilt:hover .tilt-inner { transform: none !important; }
+            .showcase-grid .tilt, 
+            .showcase-grid .tilt-inner, 
+            .showcase-grid .showcase-card { transform: none !important; }
+
+            /* caption vẫn hiển thị bình thường nhưng không bắt click */
+            .showcase-card .show-title { pointer-events: none !important; z-index: 1; }
             :root{
               --violet:#8B5CF6; --blue:#3B82F6;
               --radius:16px;
@@ -466,37 +506,28 @@ def create_home_tab():
                     <!-- Tile 1 -->
                     <div class="tilt">
                       <div class="tilt-inner showcase-card" style="background:#000;">
-                        <video muted>
-                            <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-talking-on-a-video-call-3980-large.mp4" type="video/mp4">
+                        <video muted playsinline preload="metadata" controls>
+                            <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/v1.mp4" type="video/mp4">
                         </video>
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent 60%, rgba(0,0,0,0.8)); display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity 0.3s ease;">
-                            <div style="width: 64px; height: 64px; background: rgba(255, 255, 255, 0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #111827;">▶</div>
-                        </div>
-                        <div style="position: absolute; bottom: 16px; left: 16px; color: white; font-weight: 600;">Hoạt Hình Chân Dung</div>
+                        <div class="show-title">Video bài giảng với giọng đọc mặc định</div>
                       </div>
                     </div>
                     <!-- Tile 2 -->
                     <div class="tilt">
                       <div class="tilt-inner showcase-card" style="background:#000;">
-                        <video muted>
-                            <source src="https://assets.mixkit.co/videos/preview/mixkit-man-talking-on-a-video-call-3981-large.mp4" type="video/mp4">
-                        </video>
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent 60%, rgba(0,0,0,0.8)); display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity 0.3s ease;">
-                            <div style="width: 64px; height: 64px; background: rgba(255, 255, 255, 0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #111827;">▶</div>
-                        </div>
-                        <div style="position: absolute; bottom: 16px; left: 16px; color: white; font-weight: 600;">Tổng Hợp Giọng Nói</div>
+                        <video muted playsinline preload="metadata" controls>
+                            <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/v1.mp4" type="video/mp4">
+                        </video>                       
+                        <div class="show-title">Tổng Hợp Giọng Nói</div>
                       </div>
                     </div>
                     <!-- Tile 3 -->
                     <div class="tilt">
                       <div class="tilt-inner showcase-card" style="background:#000;">
-                        <video muted>
-                            <source src="https://assets.mixkit.co/videos/preview/mixkit-woman-talking-on-a-video-call-3980-large.mp4" type="video/mp4">
-                        </video>
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(transparent 60%, rgba(0,0,0,0.8)); display: flex; align-items: center; justify-content: center; opacity: 1; transition: opacity 0.3s ease;">
-                            <div style="width: 64px; height: 64px; background: rgba(255, 255, 255, 0.9); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #111827;">▶</div>
-                        </div>
-                        <div style="position: absolute; bottom: 16px; left: 16px; color: white; font-weight: 600;">Biểu Cảm Thực Tế</div>
+                        <video muted playsinline preload="metadata" controls>
+                            <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/v1.mp4" type="video/mp4">
+                        </video>                  
+                        <div class="show-title">Biểu Cảm Thực Tế</div>
                       </div>
                     </div>
                 </div>
