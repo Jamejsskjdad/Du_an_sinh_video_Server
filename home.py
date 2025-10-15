@@ -500,7 +500,7 @@ def create_home_tab():
             <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px;">
                 <div style="text-align: center; margin-bottom: 80px;">
                     <h2 style="font-size: 42px; font-weight: bold; margin-bottom: 16px; color: #111827;">Trình Diễn Video</h2>
-                    <p style="font-size: 20px; color: #6B7280; max-width: 600px; margin: 0 auto;">Xem những gì có thể làm được với công nghệ AI SadTalker</p>
+                    <p style="font-size: 20px; color: #6B7280; max-width: 600px; margin: 0 auto;">Xem trước một số sản phầm là video bài giảng hoàn chỉnh</p>
                 </div>
                 <div class="showcase-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 32px; margin-bottom: 64px;">
                     <!-- Tile 1 -->
@@ -516,7 +516,7 @@ def create_home_tab():
                     <div class="tilt">
                       <div class="tilt-inner showcase-card" style="background:#000;">
                         <video muted playsinline preload="metadata" controls>
-                            <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/v1.mp4" type="video/mp4">
+                            <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/v2.mp4" type="video/mp4">
                         </video>                       
                         <div class="show-title">Tổng Hợp Giọng Nói</div>
                       </div>
@@ -525,7 +525,7 @@ def create_home_tab():
                     <div class="tilt">
                       <div class="tilt-inner showcase-card" style="background:#000;">
                         <video muted playsinline preload="metadata" controls>
-                            <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/v1.mp4" type="video/mp4">
+                            <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/lecture_final.mp4" type="video/mp4">
                         </video>                  
                         <div class="show-title">Biểu Cảm Thực Tế</div>
                       </div>
