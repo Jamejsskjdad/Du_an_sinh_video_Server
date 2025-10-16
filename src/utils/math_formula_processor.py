@@ -260,45 +260,90 @@ class MathFormulaProcessor:
             (re.compile(r'(?<=\b[\da-wyzA-WYZ])\s+x\s+(?=[\da-wyzA-WYZ]\b)'), r' nhân '),
         ]
 
+    # --- Helpers for better math reading ---
+
+    _MATH_LET = r"[A-Za-zα-ωΑ-Ω]"  # chữ Latin + Greek 1 ký tự
+
+    def _normalize_superscripts(self, s: str) -> str:
+        """Chuẩn hóa số mũ unicode -> dạng ^n để xử lý/thay thế ổn định hơn."""
+        trans = str.maketrans("⁰¹²³⁴⁵⁶⁷⁸⁹", "0123456789")
+        s = s.replace("²", "^2").replace("³", "^3").translate(trans)
+        return s
+
+    def _insert_multiplication_reading(self, s: str) -> str:
+        """
+        Chèn ' nhân ' trong các trường hợp thực sự là phép nhân:
+        - 2x, 10x  -> 2 nhân x
+        - ax, b x  -> a nhân x, b nhân x  (chỉ khi 'a' là biến đơn lẻ, không đứng trong từ)
+        - πr, π d  -> π nhân r (hoặc d)
+        Chỉ áp dụng khi dòng có 'tính toán học' để tránh false positive trong văn bản thường.
+        """
+        if not self._is_math_line(s):
+            return s
+
+        # 1) số + x  (2x, 10x)
+        s = re.sub(r'(?<!\w)(\d+)\s*x\b', r'\1 nhân x', s, flags=re.IGNORECASE)
+
+        # 2) biến đơn + x  (ax, a x) – biến là 1 chữ, và đứng độc lập (không có chữ/số ngay trước)
+        s = re.sub(r'(?<![A-Za-z0-9_])([A-Za-z])\s*x\b', r'\1 nhân x', s)         # a x
+        s = re.sub(r'(?<![A-Za-z0-9_])([A-Za-z])x\b',     r'\1 nhân x', s)         # ax
+
+        # 3) π + biến đơn (πr, π r)
+        s = re.sub(r'π\s*([A-Za-z])\b', r'π nhân \1', s)
+
+        # 4) (số|biến) + x^n  (ax^2, 2x^3) – giữ cụm x^n lại để verbalize sau
+        s = re.sub(r'(?<!\w)([A-Za-z]|\d+)\s*x\s*\^\s*(\d+)\b', r'\1 nhân x^\2', s)
+
+        return s
+
+
+    def _verbalize_exponents(self, s: str) -> str:
+        """x^2 -> x mũ 2 (đặt sau khi đã chèn 'nhân' để giữ cụm 'x^2')."""
+        s = re.sub(rf"\b({self._MATH_LET})\s*\^\s*(\d+)\b", r"\1 mũ \2", s)
+        return s
 
     def process_special_characters(self, text: str) -> str:
         if not text:
             return text
 
-        processed_text = text
+        s = text
 
-        # 1) Quy tắc "toán học phức tạp" sẵn có (giữ nguyên)
+        # (0) Chuẩn hoá superscript -> ^n
+        s = self._normalize_superscripts(s)
+
+        # (1) Quy tắc regex “công thức” sẵn có (phân số, căn, tích phân, …)
         for pattern, replacement in self.math_patterns:
-            processed_text = re.sub(pattern, replacement, processed_text)
+            s = re.sub(pattern, replacement, s)
 
-        # 1.5) Nếu dòng có tính toán học cao, áp dụng thêm ASCII math patterns
-        if self._is_math_line(processed_text):
+        # (1.5) Chèn 'nhân' giữa số–biến, biến–biến… để tránh đọc dính
+        s = self._insert_multiplication_reading(s)
+
+        # (1.6) Verbalize mũ từ dạng ^n
+        s = self._verbalize_exponents(s)
+
+        # (2) Nếu là dòng toán, áp dụng thêm ASCII math patterns ( + - * / = ... )
+        if self._is_math_line(s):
             for rx, repl in self.math_ascii_patterns:
-                processed_text = rx.sub(repl, processed_text)
+                s = rx.sub(repl, s)
 
-        # 2) Bản đồ ký hiệu Unicode + fallback ASCII (không đụng '.')
-        #    THÊM các cặp fallback an toàn cho ASCII (chỉ khi còn sót)
+        # (3) Bản đồ ký hiệu Unicode + fallback ASCII (tránh '.')
         ascii_fallbacks = {
             '+': ' cộng', '-': ' trừ', '=': ' bằng',
-            '/': ' chia', '*': ' nhân', '^': ' mũ ', ':': ' chia ',
-            # tuyệt đối KHÔNG thêm '.' ở đây
+            '/': ' chia', '*': ' nhân', '^': ' mũ ',
         }
-        # gộp với map sẵn có (ưu tiên map sẵn có)
         merged_map = dict(ascii_fallbacks)
         merged_map.update(self.special_char_map)
-        for special_char, replacement in merged_map.items():
-            # bỏ qua '.' nếu lỡ có
-            if special_char == '.':
+        for ch, rep in merged_map.items():
+            if ch == '.':
                 continue
-            processed_text = processed_text.replace(special_char, replacement)
+            s = s.replace(ch, rep)
 
-        # 3) Unicode khác
-        processed_text = self._process_unicode_chars(processed_text)
+        # (4) Unicode khác
+        s = self._process_unicode_chars(s)
 
-        # 4) Làm sạch
-        processed_text = self._clean_text(processed_text)
-
-        return processed_text
+        # (5) Làm sạch
+        s = self._clean_text(s)
+        return s
 
 
     def debug_process(self, text: str) -> Dict[str, str]:
