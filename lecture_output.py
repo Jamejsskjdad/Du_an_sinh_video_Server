@@ -169,8 +169,13 @@ def pip_composite_ffmpeg(slide_png, teacher_mp4, out_mp4,
         raise
 
 
-def generate_video_for_text(sad_talker, source_image, text, language, voice_mode, cloned_voice_name, cloned_lang,
-                            preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style, gender=None, builtin_voice=None):
+def generate_video_for_text(
+    sad_talker, source_image, text, language, voice_mode, cloned_voice_name, cloned_lang,
+    preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style,
+    gender=None, builtin_voice=None,
+    pre_synth_audio_path: str = None,  # NEW
+    speech_rate: float = 1.0          # NEW
+):
     max_retries = 3
     retry_count = 0
     while retry_count < max_retries:
@@ -180,42 +185,46 @@ def generate_video_for_text(sad_talker, source_image, text, language, voice_mode
                 print(f"Source image not found: {source_image}")
                 return None
 
-            # TTS
-            audio_path = None
-            if voice_mode == 'Giọng nhân bản' and cloned_voice_name:
-                ref_wav = _find_reference_wav_by_display_name(cloned_voice_name)
-                if ref_wav:
-                    try:
-                        xtts = XTTSInference()
-                        lang_code = cloned_lang if cloned_lang else language
-                        audio_path = xtts.synthesize(text, lang_code, ref_wav)
-                    except Exception as e:
-                        print(f"XTTS synthesis failed, fallback to gTTS: {e}")
-                if audio_path is None:
-                    audio_path = convert_text_to_audio(text, language)
-            else:
-                audio_path = convert_text_to_audio(
-                    text=text,
-                    language=language,
-                    gender=gender,
-                    preferred_voice=builtin_voice or None
-                )
-
+            # === TTS (hoặc dùng audio có sẵn) ===
+            audio_path = pre_synth_audio_path
+            if not audio_path:
+                if voice_mode == 'Giọng nhân bản' and cloned_voice_name:
+                    ref_wav = _find_reference_wav_by_display_name(cloned_voice_name)
+                    if ref_wav:
+                        try:
+                            xtts = XTTSInference()
+                            lang_code = cloned_lang if cloned_lang else language
+                            audio_path = xtts.synthesize(text, lang_code, ref_wav)
+                        except Exception as e:
+                            print(f"XTTS synthesis failed, fallback to gTTS: {e}")
+                    if audio_path is None:
+                        audio_path = convert_text_to_audio(text, language)
+                else:
+                    audio_path = convert_text_to_audio(
+                        text=text,
+                        language=language,
+                        gender=gender,
+                        preferred_voice=builtin_voice or None
+                    )
             if not audio_path:
                 print("Failed to convert text to audio")
                 return None
+
+            # === Áp dụng tốc độ đọc ===
+            audio_path = adjust_audio_speed(audio_path, speech_rate)
 
             print(f"Generating video with image: {source_image}")
             print(f"Audio path: {audio_path}")
             print(f"Batch size: {batch_size} (attempt {retry_count + 1}/{max_retries})")
 
-            # SadTalker sinh video teacher
+            # SadTalker
             video_path = sad_talker.test(
                 source_image, audio_path, preprocess_type, is_still_mode,
                 enhancer, batch_size, size_of_image, pose_style
             )
 
-            if os.path.exists(audio_path):
+            # Xoá audio tạm (nếu audio được synth trong hàm này)
+            if not pre_synth_audio_path and os.path.exists(audio_path):
                 os.remove(audio_path)
 
             if video_path and os.path.exists(video_path):
@@ -243,7 +252,7 @@ def generate_video_for_text(sad_talker, source_image, text, language, voice_mode
     return None
 
 def create_lecture_video(sad_talker, slides_data, source_image, language, voice_mode, cloned_voice_name, cloned_lang,
-                         preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style, gender=None, builtin_voice=None):
+                         preprocess_type, is_still_mode, enhancer, batch_size, size_of_image, pose_style, gender=None, builtin_voice=None,speech_rate: float = 1.0):
     try:
         if not slides_data:
             return None, "❌ Không có slide nào để xử lý!"
@@ -292,7 +301,7 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
                     print(f"❌ Failed to create slide image for slide {i+1}")
                     continue
 
-            # Âm thanh slide (để biết duration, nhưng overlay sẽ copy audio từ video teacher)
+            # === Âm thanh slide (tạo 1 lần, có áp dụng speech_rate) ===
             if voice_mode == 'Giọng nhân bản' and cloned_voice_name:
                 ref_wav = _find_reference_wav_by_display_name(cloned_voice_name)
                 if ref_wav:
@@ -306,7 +315,12 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
                 else:
                     audio_path = convert_text_to_audio(slide_data['text'], language)
             else:
-                audio_path = convert_text_to_audio(slide_data['text'], language)
+                audio_path = convert_text_to_audio(
+                    text=slide_data['text'],
+                    language=language,
+                    gender=gender,
+                    preferred_voice=builtin_voice or None
+                )
 
             if not audio_path:
                 print(f"❌ Failed TTS for slide {i+1}, create silent 3s")
@@ -318,19 +332,22 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
                 except Exception as e:
                     print(f"❌ Cannot create silent audio: {e}")
                     continue
-
+            # Áp dụng tốc độ đọc
+            audio_path = adjust_audio_speed(audio_path, speech_rate)
             audio_duration = get_audio_duration(audio_path)
             if audio_duration <= 0.1:
                 audio_duration = 3.0
             print(f"Audio duration for slide {i+1}: {audio_duration:.2f}s")
 
-            # Sinh video teacher
+            # === Sinh video teacher từ AUDIO ĐÃ ĐIỀU CHỈNH ===
             print("🎬 Generating teacher video…")
             teacher_video_path = generate_video_for_text(
                 sad_talker, safe_image_path, slide_data['text'], language, voice_mode,
                 cloned_voice_name, cloned_lang, preprocess_type, is_still_mode,
                 enhancer, batch_size, size_of_image, pose_style,
-                gender=gender, builtin_voice=builtin_voice
+                gender=gender, builtin_voice=builtin_voice,
+                pre_synth_audio_path=audio_path,    # NEW
+                speech_rate=speech_rate             # NEW (cho đồng bộ)
             )
             cleanup_cuda_memory()
 
@@ -457,9 +474,49 @@ def create_lecture_video(sad_talker, slides_data, source_image, language, voice_
         print(f"Error in create_lecture_video: {str(e)}")
         return None, f"❌ Lỗi tạo video bài giảng: {str(e)}"
 
+def adjust_audio_speed(in_path: str, rate: float) -> str:
+    """
+    Dùng ffmpeg atempo để đổi tốc độ đọc (giữ cao độ).
+    - rate=1.0: giữ nguyên
+    - 0.5 <= rate <= 2.0: dùng 1 filter
+    - Ngoài khoảng trên: xâu chuỗi nhiều filter atempo
+    Trả về đường dẫn file .wav mới (không ghi đè bản gốc).
+    """
+    try:
+        if not in_path or not os.path.exists(in_path) or abs(rate - 1.0) < 1e-3:
+            return in_path
+
+        base, ext = os.path.splitext(in_path)
+        out_path = f"{base}_r{rate:.2f}{ext or '.wav'}"
+
+        # Xây chuỗi atempo để mọi phân đoạn đều trong [0.5, 2.0]
+        r = float(rate)
+        filters = []
+        while r > 2.0 + 1e-9:
+            filters.append("atempo=2.0")
+            r /= 2.0
+        while r < 0.5 - 1e-9:
+            filters.append("atempo=0.5")
+            r /= 0.5
+        filters.append(f"atempo={r:.3f}")
+        atempo_chain = ",".join(filters)
+
+        cmd = ["ffmpeg", "-y", "-i", in_path, "-filter:a", atempo_chain, out_path]
+        p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if p.returncode != 0:
+            err = p.stderr.decode("utf-8", errors="ignore")
+            raise RuntimeError(f"ffmpeg atempo failed: {err}")
+
+        return out_path if os.path.exists(out_path) else in_path
+    except Exception as e:
+        print(f"⚠️ adjust_audio_speed warning: {e}")
+        return in_path
+
+
 def generate_lecture_video_handler(
     sad_talker, pptx, img, lang, voice_mode, cloned_voice, gender, builtin_voice,
-    cloned_lang, preprocess, still, enh, batch, size, pose
+    cloned_lang, preprocess, still, enh, batch, size, pose,
+    speech_rate 
 ):
     if not pptx or not img:
         return None, "❌ Vui lòng chọn đủ ảnh giáo viên và file PowerPoint!"
@@ -474,5 +531,6 @@ def generate_lecture_video_handler(
         voice_mode, cloned_voice, cloned_lang,
         preprocess, still, enh, batch, size, pose,
         gender=gender or 'Nữ',
-        builtin_voice=builtin_voice
+        builtin_voice=builtin_voice,
+        speech_rate=speech_rate   # NEW
     )

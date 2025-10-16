@@ -94,11 +94,11 @@ def sadtalker_demo_with_home(checkpoint_path='checkpoints', config_path='src/con
                 # Kết nối với output handler
                 input_components['generate_btn'].click(
                     fn=lambda pptx, img, lang, voice_mode, cloned_voice, gender, builtin_voice,
-                            cloned_lang, preprocess, still, enh, batch, size, pose:
+                            cloned_lang, preprocess, still, enh, batch, size, pose, speech_rate:
                         generate_lecture_video_handler(
                             sad_talker, pptx, img, lang, voice_mode,
                             cloned_voice, gender, builtin_voice, cloned_lang,
-                            preprocess, still, enh, batch, size, pose
+                            preprocess, still, enh, batch, size, pose,speech_rate   
                         ),
                     inputs=[
                         input_components['pptx_file'],             
@@ -114,7 +114,8 @@ def sadtalker_demo_with_home(checkpoint_path='checkpoints', config_path='src/con
                         input_components['enhancer'],              
                         input_components['batch_size'],            
                         input_components['size_of_image'],         
-                        input_components['pose_style']             
+                        input_components['pose_style'],
+                        input_components['speech_rate']              
                     ],
                         outputs=[
                             input_components['final_video'],   # nhận video path

@@ -543,7 +543,7 @@ def extract_lecture_slides(file):
 
 def set_lecture_fast_mode():
     """Set fast mode preset for lecture generation"""
-    return 256, 'crop', False, 2, False, 0
+    return 256, 'crop', False, 2, False, 0, 1.0 
 
 def _list_edge_voices_for(lang_code: str, gender: str):
     v = EDGE_VOICE_BY_LANG_GENDER.get(lang_code or "", {})
@@ -679,7 +679,12 @@ def create_lecture_input_interface():
                         lecture_is_still_mode = gr.Checkbox(label="Still Mode (ít chuyển động đầu)")
                         lecture_batch_size = gr.Slider(label="Batch size", step=1, maximum=10, value=1, info="1 = Tiết kiệm VRAM, 2-4 = Nhanh hơn nhưng tốn VRAM")
                         lecture_enhancer = gr.Checkbox(label="GFPGAN làm Face enhancer (chậm hơn)")
-                        
+                        # NEW: tốc độ đọc
+                        lecture_speech_rate = gr.Slider(
+                            minimum=0.6, maximum=1.6, step=0.05, value=1.0,
+                            label="Tốc độ đọc (0.6× – 1.6×)",
+                            info="1.0 = bình thường; áp dụng cho cả giọng nhân bản & giọng có sẵn"
+                        )
                         # Fast mode preset button
                         lecture_fast_mode_btn = gr.Button(
                             '⚡ Chế độ nhanh (256px, batch=2, không enhancer)',
@@ -689,7 +694,7 @@ def create_lecture_input_interface():
                         
                         lecture_fast_mode_btn.click(
                             fn=set_lecture_fast_mode,
-                            outputs=[lecture_size_of_image, lecture_preprocess_type, lecture_is_still_mode, lecture_batch_size, lecture_enhancer, lecture_pose_style]
+                            outputs=[lecture_size_of_image, lecture_preprocess_type, lecture_is_still_mode, lecture_batch_size, lecture_enhancer, lecture_pose_style,lecture_speech_rate]
                         )
             
             # Results placeholder (will be connected to output module)
@@ -748,5 +753,7 @@ def create_lecture_input_interface():
         'final_video': lecture_final_video,
         'info': lecture_info,
         'builtin_gender': lecture_builtin_gender,
-        'builtin_voice': lecture_builtin_voice
+        'builtin_voice': lecture_builtin_voice,
+        # NEW:
+        'speech_rate': lecture_speech_rate
     }
