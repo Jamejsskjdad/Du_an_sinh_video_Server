@@ -200,26 +200,76 @@ def create_home_tab():
             min-height: 320px;
             }
 
-
-
-            /* -------- Showcase video tiles -------- */
+            /* -------- Showcase video tiles (responsive, no crop) -------- */
             .showcase-card{
-              position: relative; overflow:hidden; border-radius: var(--radius);
-              transition: transform var(--transition), box-shadow var(--transition), filter var(--transition);
-              box-shadow: none;                  /* không có đổ bóng khi chưa hover */
-              transform: translateZ(0);
+                position: relative;
+                border-radius: var(--radius);
+                transition: transform var(--transition), box-shadow var(--transition), filter var(--transition);
+                box-shadow: none;
+                transform: translateZ(0);
+                overflow: visible;                   /* không cắt video khi fullscreen */
             }
-            .showcase-card:hover{ transform: translateY(-6px) scale(1.02); box-shadow: var(--shadow-md); }
+
+            /* Khung media giữ đúng tỉ lệ 16:9 */
+                .showcase-card .media{
+                position: relative;
+                width: 100%;
+                aspect-ratio: 16/9;                  /* responsive height */
+                border-radius: inherit;
+                overflow: hidden;                    /* chỉ cắt trong thumbnail, không ảnh hưởng fullscreen */
+                background: #000;                    /* nền đen cho letterbox */
+            }
+
+            /* Video lấp đầy khung, không crop nội dung */
             .showcase-card video{
-              transition: transform var(--transition), filter var(--transition); will-change: transform;
-              width: 100%; height: 250px; object-fit: cover;
+                position: absolute;
+                inset: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: contain;                 /* hiển thị toàn bộ khung hình */
+                display: block;
+                border-radius: inherit;
+                transition: transform var(--transition), filter var(--transition);
+                will-change: transform;
+                z-index: 1;
             }
-            .showcase-card:hover video{ transform: scale(1.06); filter: saturate(1.05) contrast(1.02); }
-            .showcase-card::after{
-              content:""; position:absolute; inset:0; pointer-events:none; border-radius: inherit;
-              box-shadow: var(--glow); transition: box-shadow var(--transition);
+
+            /* Hover chỉ áp vào thumbnail, không ảnh hưởng fullscreen */
+            .showcase-card:hover{ transform: translateY(-6px) scale(1.02); box-shadow: var(--shadow-md); }
+            .showcase-card:hover video{ transform: scale(1.02); filter: saturate(1.02) contrast(1.01); }
+
+            /* Caption */
+            .showcase-card .show-title{
+                position: absolute;
+                left: 12px;
+                bottom: 12px;
+                color: #fff;
+                font-weight: 600;
+                z-index: 2;
+                pointer-events: none;
+                text-shadow: 0 2px 6px rgba(0,0,0,.6);
             }
-            .showcase-card:hover::after{ box-shadow: var(--glow-hover); }
+
+            /* Tắt tilt cho khu vực video để tránh xung đột fullscreen */
+            .showcase-grid .tilt:hover .tilt-inner { transform: none !important; }
+            .showcase-grid .tilt, .showcase-grid .tilt-inner, .showcase-grid .showcase-card { transform: none !important; }
+
+            /* --- Fullscreen fixes (Chrome/Edge/Firefox/Safari) --- */
+            video:fullscreen,
+            video:-webkit-full-screen {
+                width: 100vw !important;
+                height: 100vh !important;
+                object-fit: contain !important;
+                background: #000 !important;
+                border-radius: 0 !important;
+            }
+
+            .showcase-card:has(video:fullscreen),
+            .showcase-card:has(video:-webkit-full-screen) {
+                overflow: visible !important;
+                transform: none !important;
+                box-shadow: none !important;
+            }
 
             /* -------- Steps (How it works) -------- */
             .stepfx{
@@ -506,28 +556,31 @@ def create_home_tab():
                     <!-- Tile 1 -->
                     <div class="tilt">
                       <div class="tilt-inner showcase-card" style="background:#000;">
-                        <video muted playsinline preload="metadata" controls>
-                            <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/v1.mp4" type="video/mp4">
-                        </video>
-                        <div class="show-title">Video bài giảng với giọng đọc mặc định</div>
+                        <div class="media">
+                            <video muted playsinline preload="metadata" controls>
+                                <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/v1.mp4" type="video/mp4">
+                            </video>
+                        </div>
                       </div>
                     </div>
                     <!-- Tile 2 -->
                     <div class="tilt">
                       <div class="tilt-inner showcase-card" style="background:#000;">
+                        <div class="media">
                         <video muted playsinline preload="metadata" controls>
                             <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/v2.mp4" type="video/mp4">
                         </video>                       
-                        <div class="show-title">Tổng Hợp Giọng Nói</div>
+                        </div>
                       </div>
                     </div>
                     <!-- Tile 3 -->
                     <div class="tilt">
                       <div class="tilt-inner showcase-card" style="background:#000;">
+                        <div class="media">
                         <video muted playsinline preload="metadata" controls>
                             <source src="file=/home/dunghm/Du_an_sinh_video_main_goloi/Picture_video_UI/lecture_final.mp4" type="video/mp4">
                         </video>                  
-                        <div class="show-title">Biểu Cảm Thực Tế</div>
+                        </div>
                       </div>
                     </div>
                 </div>
