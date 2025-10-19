@@ -94,36 +94,36 @@ def sadtalker_demo_with_home(checkpoint_path='checkpoints', config_path='src/con
                 # Kết nối với output handler
                 input_components['generate_btn'].click(
                     fn=lambda pptx, img, lang, voice_mode, cloned_voice, gender, builtin_voice,
-                            cloned_lang, preprocess, still, enh, batch, size, pose, speech_rate:
+                            cloned_lang, preprocess, still, enh, batch, size, pose, speech_rate, user_slides_text:
                         generate_lecture_video_handler(
                             sad_talker, pptx, img, lang, voice_mode,
                             cloned_voice, gender, builtin_voice, cloned_lang,
-                            preprocess, still, enh, batch, size, pose,speech_rate   
+                            preprocess, still, enh, batch, size, pose, speech_rate,
+                            user_slides_text=user_slides_text
                         ),
                     inputs=[
-                        input_components['pptx_file'],             
-                        input_components['source_image'],          
-                        input_components['audio_language'],        
-                        input_components['voice_mode'],            
-                        input_components['cloned_voice_list'],     
-                        input_components['builtin_gender'],        
-                        input_components['builtin_voice'],         
-                        input_components['cloned_voice_language'], 
-                        input_components['preprocess_type'],       
-                        input_components['is_still_mode'],         
-                        input_components['enhancer'],              
-                        input_components['batch_size'],            
-                        input_components['size_of_image'],         
+                        input_components['pptx_file'],
+                        input_components['source_image'],
+                        input_components['audio_language'],
+                        input_components['voice_mode'],
+                        input_components['cloned_voice_list'],
+                        input_components['builtin_gender'],
+                        input_components['builtin_voice'],
+                        input_components['cloned_voice_language'],
+                        input_components['preprocess_type'],
+                        input_components['is_still_mode'],
+                        input_components['enhancer'],
+                        input_components['batch_size'],
+                        input_components['size_of_image'],
                         input_components['pose_style'],
-                        input_components['speech_rate']              
+                        input_components['speech_rate'],
+                        input_components['slides_text'],
                     ],
-                        outputs=[
-                            input_components['final_video'],   # nhận video path
-                            input_components['info']           # nhận status_text
-                        ]
+                    outputs=[
+                        input_components['final_video'],
+                        input_components['info']
+                    ]
                 )
-
-
         
         # Kết nối events để chuyển đổi trang
         start_btn.click(

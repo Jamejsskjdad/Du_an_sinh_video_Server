@@ -515,31 +515,13 @@ def extract_slides_from_pptx(pptx_file):
 
 
 def extract_lecture_slides(file):
-    """Handler function for extracting slides from PowerPoint"""
+    """Extract slides -> trả về text đầy đủ có thể chỉnh sửa"""
     if file:
         slides_data = extract_slides_from_pptx(file)
         if slides_data:
-            slides_text = []
-            total_math_slides = 0
-            
-            for i, slide in enumerate(slides_data):
-                slide_num = slide['slide_number']
-                text_preview = slide['text'][:100] + "..." if len(slide['text']) > 100 else slide['text']
-                
-                # Thêm thông tin về công thức toán học
-                if slide.get('has_math_objects', False):
-                    slides_text.append(f"Slide {slide_num}: {text_preview} [📐 Có công thức toán học]")
-                    total_math_slides += 1
-                else:
-                    slides_text.append(f"Slide {slide_num}: {text_preview}")
-            
-            # Thêm thống kê
-            summary = f"\n\n📊 Thống kê: {len(slides_data)} slides, {total_math_slides} slides có công thức toán học"
-            if total_math_slides > 0:
-                summary += "\n✅ Đã xử lý thành công các ký tự đặc biệt và công thức toán học!"
-            
-            return "\n\n".join(slides_text) + summary
+            return _format_slides_as_text(slides_data)
     return "❌ Vui lòng chọn file PowerPoint!"
+
 
 def set_lecture_fast_mode():
     """Set fast mode preset for lecture generation"""
@@ -561,6 +543,23 @@ def _on_builtin_lang_or_gender_change(lang, gender):
     return gr.update(choices=voices, value=value)
 
 
+def _format_slides_as_text(slides_data):
+    """Ghép toàn bộ slide thành text có thể sửa: ## Slide 1 ..."""
+    lines = []
+    for s in slides_data:
+        num = s.get("slide_number", len(lines) + 1)
+        txt = (s.get("text") or "").strip()
+        lines.append(f"## Slide {num}")
+        lines.append(txt)
+        lines.append("")  # dòng trống giữa các slide
+    return "\n".join(lines).strip()
+
+def _save_edited_slides_text(text: str):
+    os.makedirs("results", exist_ok=True)
+    path = os.path.join("results", "edited_slides.txt")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text or "")
+    return f"✅ Đã lưu nội dung ({len(text or '')} ký tự) vào: {path}"
 
 def create_lecture_input_interface():
     """Tạo giao diện input cho lecture"""
@@ -642,28 +641,33 @@ def create_lecture_input_interface():
                 )
                 clone_status = gr.Textbox(label="Trạng thái giọng nhân bản", interactive=False)
 
-            # Preview extracted slides
+            # --- thay block "Preview extracted slides" ---
             gr.Markdown("### 📝 Nội dung từ PowerPoint")
-            lecture_slides_preview = gr.Textbox(
-                label="Nội dung đã trích xuất từ các slide",
-                lines=8,
-                interactive=False,
-                elem_id="lecture_slides_preview"
+
+            # nút Lưu ở trên
+            save_slides_btn = gr.Button("💾 Lưu nội dung", elem_id="save_slides_btn", variant="secondary")
+
+            lecture_slides_text = gr.Textbox(
+                label="Nội dung đã trích xuất từ các slide (có thể chỉnh sửa)",
+                lines=18,
+                interactive=True,
+                elem_id="lecture_slides_text"
             )
-            
-            # Extract slides button
+
+            save_status = gr.Markdown("")  # trạng thái lưu
+
+            # --- nút Trích xuất ---
             extract_lecture_slides_btn = gr.Button(
                 '📂 Trích xuất nội dung từ PowerPoint',
                 elem_id="extract_lecture_slides_btn",
                 variant='secondary'
             )
-            
-            # Generate lecture video button
+
+            # --- nút Tạo video (LOẠI BỎ js=...) ---
             generate_lecture_btn = gr.Button(
                 '🎬 Tạo Video Bài Giảng',
                 elem_id="generate_lecture_btn",
-                variant='primary',
-                js="() => { document.getElementById('lecture_final_video1').scrollIntoView({behavior: 'smooth'}); }"
+                variant='primary'
             )
                        
         
@@ -714,7 +718,7 @@ def create_lecture_input_interface():
     extract_lecture_slides_btn.click(
         fn=extract_lecture_slides,
         inputs=[lecture_pptx_file],
-        outputs=[lecture_slides_preview]
+        outputs=[lecture_slides_text] 
     )
     lecture_voice_mode.change(
         fn=_on_voice_mode_change,
@@ -726,7 +730,12 @@ def create_lecture_input_interface():
         inputs=[clone_upload],
         outputs=[clone_status, cloned_voice_list]
     )
-    
+    save_slides_btn.click(
+        fn=_save_edited_slides_text,
+        inputs=[lecture_slides_text],
+        outputs=[save_status]
+    )
+
     # Return all components for connection with output module
     return {
         'source_image': lecture_source_image,
@@ -740,7 +749,6 @@ def create_lecture_input_interface():
         'clone_upload': clone_upload,
         'clone_create_btn': clone_create_btn,
         'clone_status': clone_status,
-        'slides_preview': lecture_slides_preview,
         'extract_btn': extract_lecture_slides_btn,
         'generate_btn': generate_lecture_btn,
         'pose_style': lecture_pose_style,
@@ -755,5 +763,8 @@ def create_lecture_input_interface():
         'builtin_gender': lecture_builtin_gender,
         'builtin_voice': lecture_builtin_voice,
         # NEW:
-        'speech_rate': lecture_speech_rate
+        'speech_rate': lecture_speech_rate,
+        'slides_text': lecture_slides_text,
+        'save_btn': save_slides_btn,
+        'save_status': save_status,
     }

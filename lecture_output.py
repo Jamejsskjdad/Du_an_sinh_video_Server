@@ -5,6 +5,7 @@ import tempfile
 import time
 import shutil
 import gc
+import re
 import torch
 from datetime import datetime
 # MoviePy còn dùng cho fallback concat; không dùng cho overlay nữa
@@ -16,6 +17,75 @@ from src.utils.xtts_clone import XTTSInference
 # ffmpeg
 import subprocess
 import shutil as _shutil
+
+
+def merge_user_text_with_ppt_images(user_slides, ppt_slides):
+    """
+    Gộp text do người dùng sửa (user_slides) với ảnh gốc từ PPT (ppt_slides).
+    - Ưu tiên ghép theo slide_number nếu có.
+    - Nếu không khớp số, ghép theo thứ tự (index).
+    - Mặc định chỉ xử lý số lượng = len(user_slides) để không đọc phần dư.
+    """
+    if not user_slides:
+        return ppt_slides or []
+
+    if not ppt_slides:
+        # không có PPT -> đành dùng ảnh tạo từ text
+        return user_slides
+
+    # map ảnh theo số slide
+    by_num = {s.get('slide_number'): s for s in ppt_slides if s.get('slide_number') is not None}
+
+    result = []
+    for idx, us in enumerate(user_slides):
+        # 1) thử theo số slide
+        img_path = None
+        if us.get('slide_number') in by_num:
+            img_path = by_num[us['slide_number']].get('image_path')
+
+        # 2) fallback theo thứ tự
+        if img_path is None and idx < len(ppt_slides):
+            img_path = ppt_slides[idx].get('image_path')
+
+        result.append({
+            'slide_number': us.get('slide_number', idx + 1),
+            'text': us.get('text', ''),
+            'image_path': img_path,               # <-- luôn lấy ảnh từ PPT nếu có
+            'has_math_objects': False
+        })
+    return result
+
+def parse_user_slides_text(user_text: str):
+    """
+    Parse văn bản do người dùng chỉnh sửa thành list slides:
+    Hỗ trợ tiêu đề dạng:
+      ## Slide 1
+      Slide 1:
+    Nếu không tìm thấy tiêu đề, coi toàn bộ là 1 slide.
+    """
+    slides = []
+    if not user_text or not user_text.strip():
+        return slides
+
+    txt = user_text.replace("\r\n", "\n")
+    # tìm các heading Slide N
+    pattern = re.compile(r'(?im)^\s*(?:#+\s*)?slide\s+(\d+)\s*:?\s*$', re.MULTILINE)
+    matches = list(pattern.finditer(txt))
+
+    if not matches:
+        slides.append({'slide_number': 1, 'text': txt.strip(), 'image_path': None, 'has_math_objects': False})
+        return slides
+
+    for idx, m in enumerate(matches):
+        start = m.end()
+        end = matches[idx + 1].start() if idx + 1 < len(matches) else len(txt)
+        num = int(m.group(1))
+        body = txt[start:end].strip()
+        slides.append({'slide_number': num, 'text': body, 'image_path': None, 'has_math_objects': False})
+
+    # sắp xếp theo số slide tăng dần
+    slides.sort(key=lambda s: s['slide_number'])
+    return slides
 
 def cleanup_cuda_memory():
     try:
@@ -516,14 +586,32 @@ def adjust_audio_speed(in_path: str, rate: float) -> str:
 def generate_lecture_video_handler(
     sad_talker, pptx, img, lang, voice_mode, cloned_voice, gender, builtin_voice,
     cloned_lang, preprocess, still, enh, batch, size, pose,
-    speech_rate 
+    speech_rate,
+    user_slides_text=None
 ):
-    if not pptx or not img:
-        return None, "❌ Vui lòng chọn đủ ảnh giáo viên và file PowerPoint!"
+    # Parse text người dùng (nếu có)
+    user_slides = []
+    if user_slides_text and str(user_slides_text).strip():
+        user_slides = parse_user_slides_text(user_slides_text)
 
-    slides_data = extract_slides_from_pptx(pptx)
+    ppt_slides = []
+    if pptx:
+        # dùng để lấy ảnh gốc (image_path); bỏ qua text trong PPT
+        ppt_slides = extract_slides_from_pptx(pptx)
+
+    if user_slides:
+        # ==> dùng text người dùng + ảnh PPT
+        slides_data = merge_user_text_with_ppt_images(user_slides, ppt_slides)
+    else:
+        # không có text người dùng -> fallback dùng PPT cả text lẫn ảnh
+        if not ppt_slides:
+            return None, "❌ Vui lòng chọn PowerPoint hoặc nhập nội dung slide!"
+        slides_data = ppt_slides
+
+    if not img:
+        return None, "❌ Vui lòng chọn ảnh giáo viên!"
     if not slides_data:
-        return None, "❌ Không trích xuất được slide nào từ PowerPoint!"
+        return None, "❌ Không có slide nào để xử lý!"
 
     return create_lecture_video(
         sad_talker, slides_data, img,
@@ -532,5 +620,7 @@ def generate_lecture_video_handler(
         preprocess, still, enh, batch, size, pose,
         gender=gender or 'Nữ',
         builtin_voice=builtin_voice,
-        speech_rate=speech_rate   # NEW
+        speech_rate=speech_rate
     )
+
+
