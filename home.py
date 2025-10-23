@@ -639,6 +639,14 @@ def custom_home_css():
         pointer-events: auto !important;
         z-index: -1 !important;
     }
+    /* Center content of Index page */
+    .index-center {
+    max-width: 980px;    /* bạn có thể đổi 880/1024 tuỳ ý */
+    margin-left: auto;
+    margin-right: auto;
+    gap: 12px;
+    }
+    #index_status { margin-top: 8px; }
 
     /* Đảm bảo HTML component chiếm toàn bộ không gian */
     .gradio-container {

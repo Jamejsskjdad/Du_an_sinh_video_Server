@@ -11,7 +11,8 @@ from datetime import datetime
 # MoviePy còn dùng cho fallback concat; không dùng cho overlay nữa
 from moviepy.editor import VideoFileClip, concatenate_videoclips, AudioFileClip
 from PIL import Image, ImageDraw, ImageFont
-from lecture_input import convert_text_to_audio, extract_slides_from_pptx
+from lecture_input import extract_slides_from_pptx
+from index import convert_text_to_audio  
 from src.utils.xtts_clone import XTTSInference
 
 # ffmpeg

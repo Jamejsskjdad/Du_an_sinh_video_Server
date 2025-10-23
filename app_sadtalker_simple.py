@@ -1,148 +1,120 @@
+# /home/dunghm/Du_an_sinh_video_main_goloi/app_sadtalker_simple.py
 import os, sys
 import gradio as gr
 from src.gradio_demo import SadTalker
 
-# Import các module mới
 from home import create_home_tab, custom_home_css
-from lecture_input import create_lecture_input_interface
 from lecture_output import generate_lecture_video_handler
 
-try:
-    import webui  # in webui
-    in_webui = True
-except:
-    in_webui = False
+# MỚI: import Index + Editor
+from index import create_index_interface
+from lecture_input import create_lecture_editor_interface
 
-def switch_to_lecture():
-    """Chuyển sang trang tạo video bài giảng"""
-    return gr.update(visible=False), gr.update(visible=True)
-
-def switch_to_home():
-    """Quay lại trang chủ"""
-    return gr.update(visible=True), gr.update(visible=False)
+def switch_to(target, home, index, editor):
+    vis = {
+        "home": (True, False, False),
+        "index": (False, True, False),
+        "editor": (False, False, True),
+    }[target]
+    return [gr.update(visible=vis[0]), gr.update(visible=vis[1]), gr.update(visible=vis[2])]
 
 def sadtalker_demo_with_home(checkpoint_path='checkpoints', config_path='src/config', warpfn=None):
-    # Set CUDA memory management environment variables
-    import os
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128'
-    
     sad_talker = SadTalker(checkpoint_path, config_path, lazy_load=True)
 
-    with gr.Blocks(analytics_enabled=False, title="SadTalker", css=custom_home_css()) as sadtalker_interface:
-        # State để quản lý trang hiện tại
-        current_page = gr.State("home")
-        
-        # Container chính
+    with gr.Blocks(analytics_enabled=False, title="SadTalker", css=custom_home_css()) as ui:
+        # State chia sẻ giữa trang
+        app_state = gr.State({})
+
         with gr.Column(elem_classes=["main-container"]):
-            # --- TRANG CHỦ ---
+            # HOME
             with gr.Column(visible=True, elem_classes=["home-page"]) as home_page:
-                # Tạo buttons Gradio thực sự - ẩn nhưng có thể trigger
-                with gr.Row(visible=False):
-                    start_btn = gr.Button("Start Creating Video", elem_id="start_btn", elem_classes=["hidden-start-btn"])
-                
-                # Gọi hàm tạo trang chủ và nhận button navigation
+                hidden_start = gr.Button("Start", visible=False)
                 nav_get_started_btn = create_home_tab()
-            
-            # --- TRANG TẠO VIDEO BÀI GIẢNG ---
-            with gr.Column(visible=False, elem_classes=["lecture-page"]) as lecture_page:       
-                # Nút quay lại trang chủ - nút mũi tên cong đẹp mắt
-                back_btn = gr.HTML("""
-                    <style>
-                    .back-btn {
-                        position: fixed;
-                        top: 10px;           /* cao hơn */
-                        left: 20px;
-                        z-index: 1000;
-                        background: none;    /* không viền, không nền */
-                        border: none;
-                        cursor: pointer;
-                        padding: 8px;
-                        opacity: 0.6;        /* mờ mặc định */
-                        transition: opacity 0.25s ease, transform 0.2s ease;
-                    }
 
-                    .back-btn:hover {
-                        opacity: 1;          /* sáng rõ khi hover */
-                        transform: translateY(-1px);
-                    }
+            # INDEX (nhập liệu)
+            with gr.Column(visible=False, elem_classes=["index-page"]) as index_page:
+                index_cmp = create_index_interface(app_state)
+                # Nút điều hướng xuống cuối trang Index
+                goto_editor_btn = gr.Button("➡️ Sang trang Editor để chỉnh sửa", variant="primary")
 
-                    .back-btn svg {
-                        width: 28px;
-                        height: 28px;
-                    }
-                    </style>
+            # EDITOR (Editor + Generate)
+            # EDITOR (Editor + Generate)
+            with gr.Column(visible=False, elem_classes=["editor-page"]) as editor_page:
+                editor_cmp = create_lecture_editor_interface(app_state)
 
-                    <button class="back-btn" id="back-home-btn"
-                            aria-label="Quay lại"
-                            onclick="document.querySelector('#back-home-btn-gradio').click();">
-                    <svg viewBox="0 0 24 24" fill="none"
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path d="M19 12H5M12 19L5 12L12 5"
-                            stroke="#E5E7EB" stroke-width="2.5"
-                            stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    </button>
-                    """)
+                # ==== NỐI GENERATE ====
+                # 1) ĐỊNH NGHĨA HÀM TRƯỚC
+                def _generate_from_editor(
+                    state, slides_text, pose, size, prep, still, enh, batch, rate
+                ):
+                    return generate_lecture_video_handler(
+                        sad_talker,
+                        # ---- các tham số lấy từ state do index.py đã lưu ----
+                        state.get("pptx_file"),
+                        state.get("source_image"),
+                        (state.get("audio_language") or "vi"),
+                        state.get("voice_mode"),
+                        state.get("cloned_voice"),
+                        (state.get("builtin_gender") or "Nữ"),
+                        state.get("builtin_voice"),
+                        (state.get("cloned_lang") or "vi"),
+                        # ---- các tham số từ Editor (settings) ----
+                        prep, still, enh, batch, size, pose, rate,
+                        # ---- text đã chỉnh sửa ----
+                        user_slides_text=slides_text
+                    )
 
-                
-                # Button ẩn để trigger event Gradio
-                back_btn_gradio = gr.Button("Back to Home", elem_id="back-home-btn-gradio", visible=False)
-
-                # Tạo giao diện input
-                input_components = create_lecture_input_interface()
-                
-                # Kết nối với output handler
-                input_components['generate_btn'].click(
-                    fn=lambda pptx, img, lang, voice_mode, cloned_voice, gender, builtin_voice,
-                            cloned_lang, preprocess, still, enh, batch, size, pose, speech_rate, user_slides_text:
-                        generate_lecture_video_handler(
-                            sad_talker, pptx, img, lang, voice_mode,
-                            cloned_voice, gender, builtin_voice, cloned_lang,
-                            preprocess, still, enh, batch, size, pose, speech_rate,
-                            user_slides_text=user_slides_text
-                        ),
+                # 2) SAU ĐÓ MỚI GẮN VỚI BUTTON
+                editor_cmp["generate_btn"].click(
+                    fn=_generate_from_editor,
                     inputs=[
-                        input_components['pptx_file'],
-                        input_components['source_image'],
-                        input_components['audio_language'],
-                        input_components['voice_mode'],
-                        input_components['cloned_voice_list'],
-                        input_components['builtin_gender'],
-                        input_components['builtin_voice'],
-                        input_components['cloned_voice_language'],
-                        input_components['preprocess_type'],
-                        input_components['is_still_mode'],
-                        input_components['enhancer'],
-                        input_components['batch_size'],
-                        input_components['size_of_image'],
-                        input_components['pose_style'],
-                        input_components['speech_rate'],
-                        input_components['slides_text'],
+                        app_state,
+                        editor_cmp["slides_text"],
+                        editor_cmp["pose_style"],
+                        editor_cmp["size_of_image"],
+                        editor_cmp["preprocess_type"],
+                        editor_cmp["is_still_mode"],
+                        editor_cmp["enhancer"],
+                        editor_cmp["batch_size"],
+                        editor_cmp["speech_rate"],
                     ],
-                    outputs=[
-                        input_components['final_video'],
-                        input_components['info']
-                    ]
+                    outputs=[editor_cmp["final_video"], editor_cmp["info"]],
                 )
-        
-        # Kết nối events để chuyển đổi trang
-        start_btn.click(
-            fn=switch_to_lecture,
-            outputs=[home_page, lecture_page]
-        )
-        
-        # Kết nối button navigation
-        nav_get_started_btn.click(
-            fn=switch_to_lecture,
-            outputs=[home_page, lecture_page]
-        )
-        
-        back_btn_gradio.click(
-            fn=switch_to_home,
-            outputs=[home_page, lecture_page]
-        )
-    
-    return sadtalker_interface
+
+                # NOTE: Nếu môi trường của bạn không cho phép trick outputs như trên,
+                # thay bằng cách gọi generate_lecture_video_handler trong một wrapper trực tiếp:
+                # editor_cmp["generate_btn"].click(
+                #   fn=lambda s, st, pose, size, prep, still, enh, batch, rate:
+                #       generate_lecture_video_handler(
+                #           sad_talker,
+                #           s.get("pptx_file"),
+                #           s.get("source_image"),
+                #           s.get("audio_language") or "vi",
+                #           s.get("voice_mode"),
+                #           s.get("cloned_voice"),
+                #           s.get("builtin_gender") or "Nữ",
+                #           s.get("builtin_voice"),
+                #           s.get("cloned_lang") or "vi",
+                #           prep, still, enh, batch, size, pose, rate,
+                #           user_slides_text=st
+                #       ),
+                #   inputs=[app_state, editor_cmp["slides_text"], editor_cmp["pose_style"], editor_cmp["size_of_image"],
+                #           editor_cmp["preprocess_type"], editor_cmp["is_still_mode"], editor_cmp["enhancer"],
+                #           editor_cmp["batch_size"], editor_cmp["speech_rate"]],
+                #   outputs=[editor_cmp["final_video"], editor_cmp["info"]],
+                # )
+
+        # ==== ĐIỀU HƯỚNG ====
+        # từ Home → Index
+        for btn in (hidden_start, nav_get_started_btn):
+            btn.click(lambda: switch_to("index", None, None, None), outputs=[home_page, index_page, editor_page])
+
+        # từ Index → Editor: dùng 2 nút (proceed_btn trong index + goto_editor_btn)
+        index_cmp["proceed_btn"].click(lambda: switch_to("editor", None, None, None), outputs=[home_page, index_page, editor_page])
+        goto_editor_btn.click(lambda: switch_to("editor", None, None, None), outputs=[home_page, index_page, editor_page])
+
+    return ui
 
 if __name__ == "__main__":
     demo = sadtalker_demo_with_home()
