@@ -574,29 +574,6 @@ def create_home_tab():
                 </div>
             </div>
         </section>
-
-        <!-- CTA Section -->
-        <section id="cta" style="padding: 120px 0; background: linear-gradient(135deg, #8B5CF6, #3B82F6); text-align: center; color: white;">
-            <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px;">
-                <h2 style="font-size: 48px; font-weight: bold; margin-bottom: 24px;">Sẵn Sàng Tạo Video Nói Chuyện Tuyệt Vời?</h2>
-                <p style="font-size: 20px; margin-bottom: 48px; opacity: 0.9; max-width: 600px; margin-left: auto; margin-right: auto;">
-                    Tham gia cùng hàng nghìn người sáng tạo đã sử dụng SadTalker để mang ảnh của họ trở nên sống động với công nghệ AI.
-                </p>
-                <div class="cta-buttons" style="display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;">
-                    <!-- Nút gradient -->
-                    <button class="btnfx" data-variant="gradient"
-                        style="padding: 16px 32px; border: none; border-radius: 12px; font-size: 18px; font-weight: 600;"
-                        onclick="(function(){var b=document.querySelector('#nav_get_started_btn'); if(b){ b.click(); }})();">
-                        Bắt Đầu Tạo Ngay
-                    </button>
-                    <button class="btnfx" data-border="flow"
-                        style="background: transparent; padding: 16px 32px; border-radius: 12px; font-size: 18px; font-weight: 600;"
-                        onclick="(d=>d&&d.scrollIntoView({behavior:'smooth',block:'start'}))(document.querySelector('#about'))">
-                        Tìm Hiểu Thêm
-                    </button>
-                </div>
-            </div>
-        </section>
     </body>
     </html>
     """
@@ -695,11 +672,25 @@ def custom_home_css():
     padding-top: 8px; /* hoặc 0; tuỳ ý, vì create_global_navbar đã có spacer 64px */
     }
     /* --- Fix viền đen bên dưới navbar (Gradio default background) --- */
-
-    /* Toàn bộ body của app */
-    body, .gradio-container, .main-container {
+    /* Chỉ Home mới trong suốt */
+    .home-page body,
+    .home-page .gradio-container,
+    .home-page .main-container,
+    .home-page .gradio-container .block,
+    .home-page .gradio-container .wrap {
     background: transparent !important;
     }
+
+    /* GỠ hoàn toàn cho Index & Editor (trả về màu mặc định của theme) */
+    .index-page .gradio-container,
+    .index-page .gradio-container .block,
+    .index-page .gradio-container .wrap,
+    .editor-page .gradio-container,
+    .editor-page .gradio-container .block,
+    .editor-page .gradio-container .wrap {
+    background: var(--panel-background-fill) !important; /* màu nền panel của theme */
+    }
+
 
     /* Loại bỏ viền đen trên cùng và khoảng cách lạ giữa navbar và nội dung */
     .main-container {
@@ -708,9 +699,6 @@ def custom_home_css():
     }
 
     /* Chặn Gradio tự tạo nền tối cho layout */
-    .gradio-container .block, .gradio-container .wrap {
-    background: transparent !important;
-    }
     /* Đẩy nội dung xuống dưới navbar cố định (không dùng spacer) */
     :root { --nav-h: 56px; }                 /* khớp với padding/height của nav */
 
@@ -722,11 +710,6 @@ def custom_home_css():
     .index-page, .editor-page {
     margin-top: 0 !important;
     padding-top: var(--nav-h) !important;  /* nếu 2 trang này cũng cần đẩy xuống */
-    }
-
-    /* (Tuỳ chọn) Giữ trong suốt các wrapper của Gradio để không lộ màu nền khác */
-    body, .gradio-container, .gradio-container .block, .gradio-container .wrap {
-    background: transparent !important;
     }
 
     """
