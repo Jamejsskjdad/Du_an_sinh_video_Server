@@ -342,27 +342,7 @@ def create_home_tab():
     </head>
 
     <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #111827; overflow-x: hidden;">
-        <!-- Navbar -->
-        <nav style="position: fixed; top: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0, 0, 0, 0.1); z-index: 1000; transition: all 0.3s ease;">
-            <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0;">
-                    <div style="font-size: 24px; font-weight: bold; background: linear-gradient(135deg, #8B5CF6, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">SadTalker</div>
-                    <ul style="display: flex; gap: 32px; list-style: none; margin: 0; padding: 0;">
-                        <li><a class="navfx" href="#features" onclick="(d=>d&&d.scrollIntoView({behavior:'smooth',block:'start'}))(document.querySelector('#features'))">Tính Năng</a></li>
-                        <li><a class="navfx" href="#howitworks" onclick="(d=>d&&d.scrollIntoView({behavior:'smooth',block:'start'}))(document.querySelector('#howitworks'))">Cách Hoạt Động</a></li>
-                        <li><a class="navfx" href="#showcase" onclick="(d=>d&&d.scrollIntoView({behavior:'smooth',block:'start'}))(document.querySelector('#showcase'))">Trình Diễn</a></li>
-                        <li><a class="navfx" href="#about" onclick="(d=>d&&d.scrollIntoView({behavior:'smooth',block:'start'}))(document.querySelector('#about'))">Giới Thiệu</a></li>
-                    </ul>
-                                         <!-- Nút Bắt Đầu: class đặc biệt -->
-                     <button class="btnfx btn-special"
-                         style="padding: 12px 24px; border: none; border-radius: 12px; font-weight: 600;"
-                         onclick="(function(){var b=document.querySelector('#nav_get_started_btn'); if(b){ b.click(); }})();">
-                         Bắt Đầu
-                     </button>
-                </div>
-            </div>
-        </nav>
-
+        
         <!-- Hero Section -->
         <section class="hero" style="
         min-height: 100vh;
@@ -627,6 +607,42 @@ def create_home_tab():
     nav_button = gr.Button("Bắt Đầu", elem_id="nav_get_started_btn", visible=False)
     return nav_button
 
+def create_global_navbar():
+    navbar_html = """
+    <nav style="position: fixed; top: 0; left: 0; right: 0; background: rgba(255,255,255,.95);
+                backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,.1); z-index: 1000;">
+        <div style="max-width: 1200px; margin: 0 auto; padding: 0 24px;">   
+            <div style="display:grid; grid-template-columns: 1fr auto 1fr; align-items:center; padding:16px 0;">
+                <!-- Cột 1: Logo (trái) -->
+                <div style="font-size:24px; font-weight:bold; background:linear-gradient(135deg,#8B5CF6,#3B82F6);
+                            -webkit-background-clip:text; -webkit-text-fill-color:transparent; justify-self:start;">
+                    SadTalker
+                </div>
+                <!-- Cột 2: Menu (giữa tuyệt đối) -->
+                <ul class="main-menu"
+                    style="display:flex; gap:28px; list-style:none; margin:0; padding:0; align-items:center; justify-self:center;">
+                    
+                    <li><a class="navfx" href="#" onclick="var b=document.querySelector('#nav_home_btn'); if(b){b.click();} return false;">Trang chủ</a></li>
+                    <li><a class="navfx" href="#" onclick="var b=document.querySelector('#nav_index_btn'); if(b){b.click();} return false;">Sinh video</a></li>
+                    <li><a class="navfx" href="#" onclick="var b=document.querySelector('#nav_submit_btn'); if(b){b.click();} return false;">Submit</a></li>
+                </ul>
+                <div></div>
+            </div>
+        </div>
+    </nav>
+    """
+    with gr.Group():
+        navbar = gr.HTML(navbar_html)
+        nav_home_btn   = gr.Button(visible=False, elem_id="nav_home_btn")
+        nav_index_btn  = gr.Button(visible=False, elem_id="nav_index_btn")
+        nav_submit_btn = gr.Button(visible=False, elem_id="nav_submit_btn")
+
+    return {
+        "navbar": navbar,
+        "nav_home_btn": nav_home_btn,
+        "nav_index_btn": nav_index_btn,
+        "nav_submit_btn": nav_submit_btn
+    }
 
 def custom_home_css():
     """Trả về CSS tùy chỉnh cho Gradio"""
@@ -664,6 +680,55 @@ def custom_home_css():
     @media (max-width: 768px) {
         .gradio-container { padding: 0 !important; }
     }
+        /* Ẩn navbar NỘI BỘ của trang Home (không đụng gì tới nội dung khác) */
+    .home-page nav {
+    display: none !important;
+    }
+
+    /* Vẫn cuộn mượt tới các anchor dưới navbar fixed dùng chung */
+    .home-page section[id] { 
+    scroll-margin-top: 80px; 
+    }
+
+    /* Phòng khi phần hero/đầu trang bị navbar che bớt */
+    .home-page .hero {
+    padding-top: 8px; /* hoặc 0; tuỳ ý, vì create_global_navbar đã có spacer 64px */
+    }
+    /* --- Fix viền đen bên dưới navbar (Gradio default background) --- */
+
+    /* Toàn bộ body của app */
+    body, .gradio-container, .main-container {
+    background: transparent !important;
+    }
+
+    /* Loại bỏ viền đen trên cùng và khoảng cách lạ giữa navbar và nội dung */
+    .main-container {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    }
+
+    /* Chặn Gradio tự tạo nền tối cho layout */
+    .gradio-container .block, .gradio-container .wrap {
+    background: transparent !important;
+    }
+    /* Đẩy nội dung xuống dưới navbar cố định (không dùng spacer) */
+    :root { --nav-h: 56px; }                 /* khớp với padding/height của nav */
+
+    .home-page .hero {
+    margin-top: 0 !important;              /* bỏ margin gây lộ nền đen */
+    padding-top: var(--nav-h) !important;  /* đẩy nội dung xuống bên trong hero */
+    }
+
+    .index-page, .editor-page {
+    margin-top: 0 !important;
+    padding-top: var(--nav-h) !important;  /* nếu 2 trang này cũng cần đẩy xuống */
+    }
+
+    /* (Tuỳ chọn) Giữ trong suốt các wrapper của Gradio để không lộ màu nền khác */
+    body, .gradio-container, .gradio-container .block, .gradio-container .wrap {
+    background: transparent !important;
+    }
+
     """
 
 def home():
